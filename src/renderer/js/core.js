@@ -10,7 +10,12 @@ const debounce = (fn, ms) => {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 };
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 const basename = (p) => p.split(/[\\/]/).pop();
 const snippet = (t, n) => (t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '…' : t);
 // Minuscules sans accents, avec table de correspondance vers les
@@ -48,7 +53,7 @@ const PDF_OPTS = {
 };
 
 const GAP = 64; // espace entre deux colonnes-pages
-const CACHE_V = 5; // à incrémenter quand la logique d'extraction change
+const CACHE_V = 6; // à incrémenter quand la logique d'extraction change
 
 // Marqueurs sentinelles insérés pendant l'extraction pour repérer les
 // appels de note, puis convertis en offsets par extractNoteMarkers().
@@ -70,7 +75,22 @@ function extractNoteMarkers(text) {
   }
   return { text, refs };
 }
-const THEMES = ['creme', 'sepia', 'ambre', 'nuit', 'contraste', 'perso'];
+const THEME_PRESETS = [
+  { id: 'creme', label: 'Ivoire', description: 'Clair, doux et neutre', scheme: 'light' },
+  { id: 'sepia', label: 'Lin', description: 'Chaleur d’un papier ancien', scheme: 'light' },
+  { id: 'sauge', label: 'Sauge', description: 'Une lumière calme et végétale', scheme: 'light' },
+  { id: 'ambre', label: 'Ambre', description: 'Soirée sans lumière bleue', scheme: 'dark' },
+  { id: 'nuit', label: 'Minuit', description: 'Sombre, frais et équilibré', scheme: 'dark' },
+  { id: 'contraste', label: 'Contraste', description: 'Noir sur blanc, sans texture', scheme: 'light' },
+  { id: 'perso', label: 'Sur mesure', description: 'Votre palette personnelle', scheme: 'custom' },
+];
+const TEXTURE_PRESETS = [
+  { id: 'none', label: 'Lisse', description: 'Aucun relief' },
+  { id: 'paper', label: 'Papier doux', description: 'Grain très fin' },
+  { id: 'fibers', label: 'Fibres', description: 'Trame naturelle' },
+];
+const THEMES = THEME_PRESETS.map((t) => t.id);
+const TEXTURES = TEXTURE_PRESETS.map((t) => t.id);
 const ACCENTS = ['var(--yellow)', 'var(--blue)', 'var(--green)', 'var(--red)', 'var(--pink)', 'var(--purple)'];
 const HL_COLORS = ['yellow', 'green', 'blue', 'pink'];
 const FONTS = {
@@ -106,6 +126,8 @@ const DEFAULT_SETTINGS = {
   pomodoroBreak: 5,  // durée d'une pause (minutes)
   pageAnim: 'slide', // 'slide' | 'curl' | 'none'
   bookDesign: true,  // mise en page d'auteur : chapitres, lettrines, ornements
+  texture: 'paper',  // 'none' | 'paper' | 'fibers'
+  textureIntensity: 0.42, // 0–1, reste indépendant de la palette
   custom: { bg: '#EAE4D3', paper: '#F7F1E1', ink: '#2A2620' }, // thème sur mesure
   customFonts: [],   // [{ name, data(base64) }] polices importées
 };
@@ -116,8 +138,62 @@ function hexToRgb(hex) {
   return m ? `${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}` : '0, 0, 0';
 }
 
+function validHex(hex) {
+  return /^#[0-9a-f]{6}$/i.test(hex || '');
+}
+
+function hexChannels(hex) {
+  const safe = validHex(hex) ? hex : '#000000';
+  return [1, 3, 5].map((i) => parseInt(safe.slice(i, i + 2), 16));
+}
+
+function relativeLuminance(hex) {
+  const rgb = hexChannels(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+}
+
+function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function mixHex(a, b, amountA) {
+  const ca = hexChannels(a);
+  const cb = hexChannels(b);
+  const p = Math.max(0, Math.min(1, amountA));
+  const out = ca.map((v, i) => Math.round(v * p + cb[i] * (1 - p)));
+  return '#' + out.map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
+// Un texte secondaire reste volontairement discret, sans descendre sous AA
+// sur aucune des surfaces où l'interface peut l'afficher.
+function accessibleMuted(ink, paper, ...otherBackgrounds) {
+  const backgrounds = [paper, ...otherBackgrounds];
+  if (backgrounds.some((background) => contrastRatio(ink, background) < 4.5)) {
+    return ink;
+  }
+  for (let step = 55; step <= 100; step += 5) {
+    const weight = step / 100;
+    const candidate = mixHex(ink, paper, weight);
+    if (backgrounds.every((background) => contrastRatio(candidate, background) >= 4.5)) {
+      return candidate;
+    }
+  }
+  return ink;
+}
+
+function safestTextColor(background) {
+  return contrastRatio('#000000', background) >= contrastRatio('#FFFFFF', background)
+    ? '#000000'
+    : '#FFFFFF';
+}
+
 let store = { version: 2, settings: { ...DEFAULT_SETTINGS }, books: [], stats: { daily: {} }, achievements: {} };
-// { book, paras, page, total, totalCols, cols, colW, lastCol, toc }
+// { book, paras, page, total, totalCols, cols, colW, furthestProg, toc }
 let current = null;
 let timerId = null;
 let searchState = { active: false, q: '', results: [], idx: 0 };
@@ -146,8 +222,9 @@ function bumpDaily(field, amount) {
 
 function fmtTime(sec) {
   if (!sec || sec < 60) return sec ? '< 1 min' : '0 min';
-  const h = Math.floor(sec / 3600);
-  const m = Math.round((sec % 3600) / 60);
+  const totalMinutes = Math.round(sec / 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
   return h > 0 ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
 }
 function fmtDur(mins) {

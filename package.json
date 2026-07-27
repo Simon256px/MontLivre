@@ -8,6 +8,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node tools/verify.js",
     "make-icon": "electron tools/make-icon.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win"

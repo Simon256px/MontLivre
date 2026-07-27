@@ -8,6 +8,9 @@
 
 const OCR_LANG = 'fra+eng';
 let ocrWorker = null;
+let ocrWorkerGeneration = 0;
+let ocrInitialization = null;
+let ocrGeneration = 0;
 let ocrPage = 0, ocrTotal = 1, ocrPageProgress = 0;
 
 function ocrAvailable() {
@@ -28,28 +31,57 @@ function ocrShowProgress() {
   setProgress(done, ocrTotal, `Reconnaissance du texte (OCR) — page ${Math.min(ocrPage + 1, ocrTotal)} / ${ocrTotal}`);
 }
 
-async function getOcrWorker() {
-  if (ocrWorker) return ocrWorker;
-  const { workerPath, corePath, langPath } = ocrPaths();
-  ocrWorker = await Tesseract.createWorker(OCR_LANG, 1, {
-    workerPath, corePath, langPath,
-    gzip: false, // les .traineddata embarqués ne sont pas compressés
-    logger: (m) => {
-      if (m.status === 'recognizing text' && typeof m.progress === 'number') {
-        ocrPageProgress = m.progress;
-        ocrShowProgress();
-      }
-    },
-    errorHandler: (e) => console.error('[ocr]', e),
-  });
-  return ocrWorker;
+function cancelOcrInitialization() {
+  ocrGeneration++;
 }
 
-async function ocrTerminate() {
-  if (ocrWorker) {
-    try { await ocrWorker.terminate(); } catch {}
-    ocrWorker = null;
+function getOcrWorker(generation) {
+  if (ocrWorker && ocrWorkerGeneration === generation) {
+    return Promise.resolve(ocrWorker);
   }
+  if (ocrInitialization && ocrInitialization.generation === generation) {
+    return ocrInitialization.promise;
+  }
+  const { workerPath, corePath, langPath } = ocrPaths();
+  const initialization = { generation, promise: null };
+  initialization.promise = Tesseract.createWorker(OCR_LANG, 1, {
+      workerPath, corePath, langPath,
+      gzip: false, // les .traineddata embarqués ne sont pas compressés
+      logger: (m) => {
+        if (generation === ocrGeneration &&
+            m.status === 'recognizing text' && typeof m.progress === 'number') {
+          ocrPageProgress = m.progress;
+          ocrShowProgress();
+        }
+      },
+      errorHandler: (e) => console.error('[ocr]', e),
+    })
+    .then(async (worker) => {
+      // Le worker appartient à une tentative précise. Une annulation, même
+      // suivie très vite d'une nouvelle ouverture, le rend définitivement
+      // obsolète et il ne peut pas remplacer le worker de la nouvelle lecture.
+      if (generation !== ocrGeneration || loadCancelled) {
+        try { await worker.terminate(); } catch {}
+        throw new CancelledError();
+      }
+      ocrWorker = worker;
+      ocrWorkerGeneration = generation;
+      return worker;
+    })
+    .finally(() => {
+      if (ocrInitialization === initialization) ocrInitialization = null;
+    });
+  ocrInitialization = initialization;
+  return initialization.promise;
+}
+
+async function ocrTerminate(worker) {
+  if (!worker) return;
+  if (ocrWorker === worker) {
+    ocrWorker = null;
+    ocrWorkerGeneration = 0;
+  }
+  try { await worker.terminate(); } catch {}
 }
 
 // Réassemble le texte OCR d'une page en paragraphes (bloc = ligne(s)
@@ -67,11 +99,16 @@ function ocrTextToParas(text, paras) {
 
 async function ocrPdf(pdf) {
   showLoader('Préparation de l’OCR…', { progress: true, cancelable: true });
-  const worker = await getOcrWorker();
+  const generation = ++ocrGeneration;
   const paras = [];
   ocrTotal = pdf.numPages;
+  let worker = null;
   try {
+    worker = await cancellable(getOcrWorker(generation));
+    if (generation !== ocrGeneration) throw new CancelledError();
+    throwIfCancelled();
     for (let i = 1; i <= pdf.numPages; i++) {
+      if (generation !== ocrGeneration) throw new CancelledError();
       throwIfCancelled();
       ocrPage = i - 1;
       ocrPageProgress = 0;
@@ -91,7 +128,7 @@ async function ocrPdf(pdf) {
       if (page.cleanup) page.cleanup();
     }
   } finally {
-    await ocrTerminate();
+    await ocrTerminate(worker);
   }
   const words = paras.reduce((n, p) => n + p.text.split(/\s+/).length, 0);
   return { paras, words, ocr: true };

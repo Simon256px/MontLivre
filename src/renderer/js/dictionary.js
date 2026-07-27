@@ -11,6 +11,7 @@
    de nature grammaticale). */
 
 const dictCache = new Map();
+let dictRequest = 0;
 
 // Codes de section {{S|...}} qui ne sont PAS des natures de mot
 const NON_POS = new Set([
@@ -100,6 +101,7 @@ function dictVisible() {
   return !$('#dictPopover').classList.contains('hidden');
 }
 function hideDictPopover() {
+  dictRequest++;
   $('#dictPopover').classList.add('hidden');
 }
 function positionDict(x, y) {
@@ -111,6 +113,7 @@ function positionDict(x, y) {
 async function lookupWord(rawWord, x, y) {
   const word = (rawWord || '').replace(/[^\p{L}\p{N}’'-]/gu, '').trim();
   if (!word) return;
+  const request = ++dictRequest;
   const pop = $('#dictPopover');
   pop.classList.remove('hidden');
   positionDict(x, y);
@@ -141,10 +144,10 @@ async function lookupWord(rawWord, x, y) {
       entries = await fetchDefs(word);
       dictCache.set(key, entries);
     }
-    if (!dictVisible()) return; // fermé entre-temps
+    if (!dictVisible() || request !== dictRequest) return; // fermé ou autre mot demandé entre-temps
     renderDict(word, { entries });
   } catch {
-    if (dictVisible()) renderDict(word, { failed: true });
+    if (dictVisible() && request === dictRequest) renderDict(word, { failed: true });
   }
 }
 

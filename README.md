@@ -22,7 +22,8 @@ MontLivre est une application de bureau (Electron) qui prend vos PDF et EPUB et 
 - **OCR des PDF scannés** : reconnaissance de texte hors ligne (Tesseract WASM, modèles français + anglais embarqués), proposée automatiquement quand un PDF n'a pas de texte
 - **Pagination façon livre** : simple ou double page (auto selon la fenêtre), ou défilement continu
 - **Sommaire interactif**, recherche plein texte (Ctrl+F, insensible aux accents), plein écran immersif (F11)
-- **4 modes lumière** : crème, sépia, ambre (sans lumière bleue), nuit — avec grain papier
+- **6 ambiances de lecture** : ivoire, lin, sauge, ambre (sans lumière bleue), minuit et contraste élevé
+- **Textures indépendantes** : page lisse, papier doux ou fibres naturelles, avec intensité réglable
 - **Typographie fine** : 7 polices dont Literata, Atkinson Hyperlegible et OpenDyslexic ; taille, interligne, largeur, justification
 
 ### Vitesse & confort
@@ -44,7 +45,7 @@ MontLivre est une application de bureau (Electron) qui prend vos PDF et EPUB et 
 ### Personnalisation & accessibilité
 - **Page Options plein écran** façon menu de jeu, avec remise à zéro (stats, réglages, tout)
 - **Mise en page d'auteur** : chapitres sur nouvelle page, titres ornés, lettrines
-- 5 thèmes dont un **contraste élevé**, plus un **thème sur mesure** (couleurs fond/page/texte)
+- 6 ambiances accessibles plus un **thème sur mesure** (fond/page/texte), avec contrôle et correction de contraste
 - **Import de polices** personnalisées (.ttf/.otf/.woff), 8 polices embarquées dont Manrope
 - Marges réglables, **animations de page** (glissement / page tournée / aucune), **sons de tournage**
 - Police OpenDyslexic, navigation clavier
@@ -64,6 +65,12 @@ MontLivre est une application de bureau (Electron) qui prend vos PDF et EPUB et 
 ```bash
 npm install
 npm start
+```
+
+Vérifier rapidement le projet (syntaxe, ressources, identifiants HTML et contrastes) :
+
+```bash
+npm test
 ```
 
 Ajoutez des livres par le bouton **＋ Ajouter**, par glisser-déposer, ou en ligne de commande :
