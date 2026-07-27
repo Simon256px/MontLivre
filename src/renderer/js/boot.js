@@ -2,31 +2,156 @@
 
 /* ═══════════ Câblage de l'interface & démarrage ═══════════ */
 
-// Thème sur mesure : variables CSS inline quand le thème « perso » est actif
-function applyCustomTheme() {
+const APPEARANCE_VARS = [
+  '--bg', '--paper', '--ink', '--muted', '--dim', '--shadow',
+  '--selection', '--texture-blend', '--focus-ring', '--accent-blue',
+  '--accent-red',
+];
+
+function clampSetting(value, min, max, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
+}
+
+// Les sauvegardes sont éditables et les anciens exports peuvent contenir des
+// valeurs désormais inconnues. Une préférence invalide ne doit jamais rendre
+// l'interface transparente ou inutilisable.
+function normalizeSettings(settings = store.settings) {
+  const s = settings && typeof settings === 'object' && !Array.isArray(settings)
+    ? settings
+    : { ...DEFAULT_SETTINGS, custom: { ...DEFAULT_SETTINGS.custom } };
+  if (settings === store.settings || !store.settings) store.settings = s;
+  if (!THEMES.includes(s.theme)) s.theme = DEFAULT_SETTINGS.theme;
+  if (!TEXTURES.includes(s.texture)) s.texture = DEFAULT_SETTINGS.texture;
+  if (!['pages', 'scroll'].includes(s.flow)) s.flow = DEFAULT_SETTINGS.flow;
+  if (!['auto', '1', '2'].includes(String(s.spread))) s.spread = DEFAULT_SETTINGS.spread;
+  else s.spread = String(s.spread);
+  if (!['slide', 'curl', 'none'].includes(s.pageAnim)) s.pageAnim = DEFAULT_SETTINGS.pageAnim;
+  if (typeof s.focus === 'boolean') s.focus = s.focus ? 'ruler' : 'off';
+  if (!['off', 'ruler', 'para'].includes(s.focus)) s.focus = DEFAULT_SETTINGS.focus;
+  if (!HL_COLORS.includes(s.lastHlColor)) s.lastHlColor = DEFAULT_SETTINGS.lastHlColor;
+  if (typeof s.font !== 'string' || !s.font) s.font = DEFAULT_SETTINGS.font;
+  for (const key of ['justify', 'pageSound', 'bionic', 'instantHl', 'dictOnline', 'bookDesign']) {
+    if (typeof s[key] !== 'boolean') s[key] = DEFAULT_SETTINGS[key];
+  }
+
+  s.fontSize = clampSetting(s.fontSize, 15, 26, DEFAULT_SETTINGS.fontSize);
+  s.lineHeight = clampSetting(s.lineHeight, 1.4, 2.2, DEFAULT_SETTINGS.lineHeight);
+  s.pageWidth = clampSetting(s.pageWidth, 440, 760, DEFAULT_SETTINGS.pageWidth);
+  s.pageMargin = clampSetting(s.pageMargin, 24, 90, DEFAULT_SETTINGS.pageMargin);
+  s.bionicIntensity = clampSetting(s.bionicIntensity, 0.2, 0.7, DEFAULT_SETTINGS.bionicIntensity);
+  s.textureIntensity = clampSetting(s.textureIntensity, 0, 1, DEFAULT_SETTINGS.textureIntensity);
+  s.rsvpWpm = clampSetting(s.rsvpWpm, 150, 700, DEFAULT_SETTINGS.rsvpWpm);
+  s.dailyGoalMin = clampSetting(s.dailyGoalMin, 0, 600, DEFAULT_SETTINGS.dailyGoalMin);
+  s.pomodoroFocus = clampSetting(s.pomodoroFocus, 10, 60, DEFAULT_SETTINGS.pomodoroFocus);
+  s.pomodoroBreak = clampSetting(s.pomodoroBreak, 3, 20, DEFAULT_SETTINGS.pomodoroBreak);
+
+  const custom = s.custom || {};
+  s.custom = {
+    bg: validHex(custom.bg) ? custom.bg : DEFAULT_SETTINGS.custom.bg,
+    paper: validHex(custom.paper) ? custom.paper : DEFAULT_SETTINGS.custom.paper,
+    ink: validHex(custom.ink) ? custom.ink : DEFAULT_SETTINGS.custom.ink,
+  };
+  const customFonts = Array.isArray(s.customFonts) ? s.customFonts : [];
+  s.customFonts = customFonts.flatMap((f) => {
+    if (!f || typeof f.name !== 'string' || typeof f.data !== 'string') return [];
+    const name = f.name.replace(/["<>]/g, '').trim().slice(0, 80);
+    const data = f.data;
+    if (!name || data.length > 32 * 1024 * 1024 || !/^[a-z0-9+/=]+$/i.test(data)) return [];
+    return [{ name, data }];
+  }).filter((f, i, all) => all.findIndex((x) => x.name === f.name) === i);
+  const customFontName = s.font.startsWith('custom:') ? s.font.slice(7) : null;
+  const validFont = customFontName
+    ? s.customFonts.some((f) => f.name === customFontName)
+    : Object.hasOwn(FONTS, s.font);
+  if (!validFont) {
+    s.font = DEFAULT_SETTINGS.font;
+  }
+  return s;
+}
+
+function safeCustomAppearance(custom) {
+  const paper = custom.paper;
+  const ink = contrastRatio(custom.ink, paper) >= 4.5
+    ? custom.ink
+    : safestTextColor(paper);
+  // L'interface et la page partagent la même couleur de texte. Si le fond
+  // choisi lui est incompatible, on rapproche le pourtour de la page plutôt
+  // que de rendre les commandes invisibles.
+  const bg = contrastRatio(ink, custom.bg) >= 4.5 ? custom.bg : paper;
+  return {
+    bg,
+    paper,
+    ink,
+    adjusted: bg !== custom.bg || ink !== custom.ink,
+  };
+}
+
+// Une seule porte d'entrée applique palette, texture et préférences système.
+function applyAppearance() {
+  const s = normalizeSettings();
   const b = document.body;
-  const vars = ['--bg', '--paper', '--ink', '--muted', '--dim', '--grain-op'];
-  if (store.settings.theme === 'perso') {
-    const c = store.settings.custom || {};
+  const preset = THEME_PRESETS.find((t) => t.id === s.theme) || THEME_PRESETS[0];
+  b.dataset.theme = preset.id;
+  b.dataset.texture = s.texture;
+  document.documentElement.style.colorScheme =
+    preset.scheme === 'custom'
+      ? (relativeLuminance(s.custom.paper) < 0.35 ? 'dark' : 'light')
+      : preset.scheme;
+
+  // La texture reste sous le texte. En contraste élevé, elle est neutralisée
+  // sans écraser le choix mémorisé par l'utilisateur.
+  const textureOpacity = s.theme === 'contraste' || s.texture === 'none'
+    ? 0
+    : s.textureIntensity * 0.1;
+  b.style.setProperty('--texture-opacity', textureOpacity.toFixed(3));
+
+  if (s.theme === 'perso') {
+    const c = safeCustomAppearance(s.custom);
+    const dark = relativeLuminance(c.paper) < 0.35;
     b.style.setProperty('--bg', c.bg);
     b.style.setProperty('--paper', c.paper);
     b.style.setProperty('--ink', c.ink);
-    b.style.setProperty('--muted', `rgba(${hexToRgb(c.ink)}, .5)`);
+    b.style.setProperty('--muted', accessibleMuted(c.ink, c.paper, c.bg));
     b.style.setProperty('--dim', `rgba(${hexToRgb(c.bg)}, .82)`);
-    b.style.setProperty('--grain-op', '.05');
+    b.style.setProperty('--shadow', dark ? 'rgba(0, 0, 0, .72)' : mixHex(c.ink, c.bg, 0.82));
+    b.style.setProperty('--selection', `rgba(${hexToRgb(c.ink)}, .16)`);
+    b.style.setProperty('--texture-blend', dark ? 'soft-light' : 'multiply');
+    b.style.setProperty('--focus-ring', c.ink);
+    b.style.setProperty('--accent-blue', c.ink);
+    b.style.setProperty('--accent-red', c.ink);
   } else {
-    vars.forEach((v) => b.style.removeProperty(v));
+    APPEARANCE_VARS.forEach((v) => b.style.removeProperty(v));
   }
 }
 
+function renderContrastStatus() {
+  const el = $('#contrastStatus');
+  if (!el) return;
+  const { ink, paper } = store.settings.custom;
+  const ratio = Math.min(
+    contrastRatio(ink, paper),
+    contrastRatio(ink, store.settings.custom.bg)
+  );
+  const safe = safeCustomAppearance(store.settings.custom);
+  el.classList.toggle('warn', ratio < 7);
+  el.classList.toggle('bad', safe.adjusted);
+  el.textContent = safe.adjusted
+    ? `Contraste ${ratio.toFixed(1)}:1 · couleurs sûres appliquées à l’aperçu`
+    : ratio >= 7
+      ? `Contraste ${ratio.toFixed(1)}:1 · excellent pour la lecture`
+      : `Contraste ${ratio.toFixed(1)}:1 · lisible, mais perfectible`;
+}
+
 // Polices importées : enregistrement FontFace + entrées du menu déroulant
-function registerCustomFont(name, dataB64) {
+async function registerCustomFont(name, dataB64) {
   try {
     const bin = atob(dataB64);
     const u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const face = new FontFace(name, u8.buffer);
-    face.load().then((f) => document.fonts.add(f)).catch(() => {});
+    const loaded = await face.load();
+    document.fonts.add(loaded);
     FONTS['custom:' + name] = `'${name}', 'Segoe UI', sans-serif`;
     return true;
   } catch {
@@ -51,7 +176,7 @@ async function importFontFile() {
   for (let i = 0; i < u8.length; i += CH) bin += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
   const dataB64 = btoa(bin);
   const name = basename(path).replace(/\.(ttf|otf|woff2?|ttc)$/i, '').slice(0, 40);
-  if (!registerCustomFont(name, dataB64)) { toast('Police illisible'); return; }
+  if (!await registerCustomFont(name, dataB64)) { toast('Police illisible'); return; }
   store.settings.customFonts = (store.settings.customFonts || []).filter((f) => f.name !== name);
   store.settings.customFonts.push({ name, data: dataB64 });
   store.settings.font = 'custom:' + name;
@@ -64,10 +189,23 @@ async function importFontFile() {
 }
 
 function syncControls() {
-  const s = store.settings;
-  document.body.dataset.theme = s.theme;
-  applyCustomTheme();
-  $$('.dot').forEach((d) => d.classList.toggle('active', d.dataset.theme === s.theme));
+  const s = normalizeSettings();
+  applyAppearance();
+  $$('.dot').forEach((d) => {
+    const active = d.dataset.theme === s.theme;
+    d.classList.toggle('active', active);
+    d.setAttribute('aria-pressed', String(active));
+  });
+  $$('.theme-card').forEach((d) => {
+    const active = d.dataset.theme === s.theme;
+    d.classList.toggle('active', active);
+    d.setAttribute('aria-checked', String(active));
+  });
+  $$('.texture-card').forEach((d) => {
+    const active = d.dataset.texture === s.texture;
+    d.classList.toggle('active', active);
+    d.setAttribute('aria-checked', String(active));
+  });
   $('#fontSelect').value = s.font;
   $('#flowSelect').value = s.flow;
   $('#spreadSelect').value = s.spread;
@@ -75,6 +213,14 @@ function syncControls() {
   $('#colBg').value = s.custom.bg;
   $('#colPaper').value = s.custom.paper;
   $('#colInk').value = s.custom.ink;
+  $('#textureRange').value = Math.round(s.textureIntensity * 100);
+  $('#textureVal').textContent = s.texture === 'none'
+    ? 'désactivée'
+    : Math.round(s.textureIntensity * 100) + ' %';
+  $('#textureIntensitySetting').classList.toggle('is-disabled', s.texture === 'none');
+  $('#textureRange').disabled = s.texture === 'none';
+  $('#customThemePanel').classList.toggle('active', s.theme === 'perso');
+  renderContrastStatus();
   applyPageAnimStyle();
   $('#sizeRange').value = s.fontSize;
   $('#sizeVal').textContent = s.fontSize + ' px';
@@ -140,18 +286,39 @@ function switchOptPane(pane) {
 }
 
 function buildUI() {
-  for (const holder of ['#libDots', '#readerDots', '#optDots']) {
-    $(holder).innerHTML = THEMES.map((t) =>
-      `<button class="dot" data-theme="${t}" title="Thème ${t}"></button>`).join('');
+  for (const holder of ['#libDots', '#readerDots']) {
+    $(holder).innerHTML = THEME_PRESETS.map((t) =>
+      `<button class="dot" data-theme="${t.id}" title="${esc(t.label)}" ` +
+      `aria-label="Ambiance ${esc(t.label)}" aria-pressed="false"></button>`).join('');
   }
-  $$('.dot').forEach((d) => d.addEventListener('click', () => {
+
+  $('#themeGallery').innerHTML = THEME_PRESETS.map((t) =>
+    `<button class="theme-card" data-theme="${t.id}" role="radio" aria-checked="false">
+       <span class="theme-preview" aria-hidden="true"><i></i><b></b></span>
+       <span class="theme-copy"><strong>${esc(t.label)}</strong><small>${esc(t.description)}</small></span>
+       <span class="theme-check" aria-hidden="true">✓</span>
+     </button>`
+  ).join('');
+  $('#textureGallery').innerHTML = TEXTURE_PRESETS.map((t) =>
+    `<button class="texture-card" data-texture="${t.id}" role="radio" aria-checked="false">
+       <span class="texture-preview" aria-hidden="true"></span>
+       <span><strong>${esc(t.label)}</strong><small>${esc(t.description)}</small></span>
+     </button>`
+  ).join('');
+
+  $$('.dot, .theme-card').forEach((d) => d.addEventListener('click', () => {
     store.settings.theme = d.dataset.theme;
+    applySettings(false);
+  }));
+  $$('.texture-card').forEach((d) => d.addEventListener('click', () => {
+    store.settings.texture = d.dataset.texture;
     applySettings(false);
   }));
 
   /* --- Chargement interruptible --- */
   $('#loaderCancel').addEventListener('click', () => {
     loadCancelled = true;
+    if (typeof cancelOcrInitialization === 'function') cancelOcrInitialization();
     $('#loaderText').textContent = 'Interruption…';
     $('#loaderCancel').classList.add('hidden');
   });
@@ -260,9 +427,9 @@ function buildUI() {
   $('#optExportLib').addEventListener('click', exportLibrary);
   $('#optImportLib').addEventListener('click', importLibrary);
   $('#resetStatsBtn').addEventListener('click', () => {
-    if (!confirm('Réinitialiser toutes les statistiques (temps, streak, succès) ?')) return;
+    if (!confirm('Réinitialiser les temps de lecture et la série ?\n(Les succès déjà obtenus restent conservés.)')) return;
     store.stats = { daily: {} };
-    store.achievements = {};
+    for (const book of store.books) book.readingSeconds = 0;
     persist();
     renderAchievements();
     renderLibrary();
@@ -358,6 +525,10 @@ function buildUI() {
   };
   ['#colBg', '#colPaper', '#colInk'].forEach((id) =>
     $(id).addEventListener('input', onCustomColor));
+  $('#textureRange').addEventListener('input', (e) => {
+    store.settings.textureIntensity = Number(e.target.value) / 100;
+    applySettings(false);
+  });
   $('#sizeRange').addEventListener('input', (e) => {
     store.settings.fontSize = Number(e.target.value);
     applySettings(true);
@@ -517,10 +688,12 @@ function buildUI() {
   };
   rsvpBar.addEventListener('pointerup', endDrag);
   rsvpBar.addEventListener('pointercancel', endDrag);
-  $('#rsvpContext').addEventListener('click', (e) => {
+  const resumeRsvpAtWord = (e) => {
     const w = e.target.closest('.w');
     if (w) rsvpGoto(Number(w.dataset.i));
-  });
+  };
+  $('#rsvpContext').addEventListener('click', resumeRsvpAtWord);
+  $('#rsvpPreview').addEventListener('click', resumeRsvpAtWord);
 
   /* --- Clavier --- */
   document.addEventListener('keydown', (e) => {
@@ -529,6 +702,10 @@ function buildUI() {
       return;
     }
     if (rsvpVisible()) {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+        if (e.key === 'Escape') rsvpClose();
+        return;
+      }
       if (e.key === ' ') { e.preventDefault(); rsvpSetPlaying(!rsvp.playing); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); rsvpStep(1); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); rsvpStep(-1); }
@@ -580,6 +757,9 @@ function buildUI() {
     wheelLock = now;
     turnPage(e.deltaY > 0 ? 1 : -1);
   }, { passive: true });
+  // Le volet parallèle a son propre défilement : sa molette ne doit pas
+  // tourner en même temps la page du livre principal.
+  $('#companionBody').addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
 
   $('#bookViewport').addEventListener('scroll', debounce(onScrolled, 150));
 
@@ -633,31 +813,48 @@ function buildUI() {
 
 (async function init() {
   const saved = await window.livre.loadStore();
-  if (saved) {
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
     store = saved;
-    store.settings = { ...DEFAULT_SETTINGS, ...(store.settings || {}) };
-    store.books = (store.books || []).map((b) => ({
-      format: 'pdf',
-      author: '',
-      annotations: [],
-      bookmarks: [],
-      sketches: [],
-      favorite: false,
-      tags: [],
-      ...b,
-    }));
-    store.stats = store.stats || { daily: {} };
-    store.stats.daily = store.stats.daily || {};
+    const savedSettings = store.settings && typeof store.settings === 'object' &&
+      !Array.isArray(store.settings) ? store.settings : {};
+    store.settings = { ...DEFAULT_SETTINGS, ...savedSettings };
+    store.books = (Array.isArray(store.books) ? store.books : [])
+      .map((book) => sanitizeImportedBook(book))
+      .filter(Boolean);
+    const savedStats = store.stats && typeof store.stats === 'object' &&
+      !Array.isArray(store.stats) ? store.stats : {};
+    const savedDaily = savedStats.daily && typeof savedStats.daily === 'object' &&
+      !Array.isArray(savedStats.daily) ? savedStats.daily : {};
+    const daily = {};
+    for (const [day, value] of Object.entries(savedDaily)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+          !value || typeof value !== 'object' || Array.isArray(value)) continue;
+      daily[day] = {
+        seconds: importedNumber(value.seconds),
+        words: importedNumber(value.words),
+      };
+    }
+    store.stats = { daily };
     store.settings.custom = { ...DEFAULT_SETTINGS.custom, ...(store.settings.custom || {}) };
     store.settings.customFonts = store.settings.customFonts || [];
-    store.achievements = store.achievements || {};
+    store.achievements = store.achievements && typeof store.achievements === 'object' &&
+      !Array.isArray(store.achievements) ? store.achievements : {};
     // focus était un booléen avant la v1.0
     if (typeof store.settings.focus === 'boolean') {
       store.settings.focus = store.settings.focus ? 'ruler' : 'off';
     }
   }
+  normalizeSettings();
+  // La palette sauvegardée s'applique avant le chargement potentiellement
+  // long des polices personnalisées : aucun flash clair en mode nuit/ambre.
+  applyAppearance();
   // Ré-enregistre les polices importées avant de bâtir l'interface
-  store.settings.customFonts.forEach((f) => registerCustomFont(f.name, f.data));
+  const validFonts = [];
+  for (const font of store.settings.customFonts) {
+    if (await registerCustomFont(font.name, font.data)) validFonts.push(font);
+  }
+  store.settings.customFonts = validFonts;
+  normalizeSettings();
   buildUI();
   rebuildFontSelect();
   syncControls();

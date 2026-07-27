@@ -53,25 +53,30 @@ async function extractPdf(pdf, onProgress) {
       const hs = lines.map((l) => l.h).sort((a, b) => a - b);
       const bodyH = hs[hs.length >> 1];
       let cutoff = lines.length;
-      let currentNote = null;
+      let continuation = [];
+      let foundNote = false;
       for (let j = lines.length - 1; j >= Math.max(2, lines.length - 12); j--) {
         const l = lines[j];
         if (l.h >= bodyH * 0.87) break;
-        const m = l.text.trim().match(/^(\d{1,3})[\s.).:]\s*(.*)$/);
+        const text = l.text.trim();
+        // Un folio sous les notes ne doit pas empêcher de remonter jusqu'à
+        // leur première ligne.
+        if (/^[-–—.]?\s*\d+\s*[-–—.]?$/.test(text) && !continuation.length) continue;
+        const m = text.match(/^(\d{1,3})[\s.).:]\s*(.*)$/);
         if (m) {
-          const prevText = currentNote ? ' ' + currentNote.text : '';
-          footnotes[`${i}:${m[1]}`] = (m[2] + prevText).replace(/\s+/g, ' ').trim();
-          currentNote = null;
-          cutoff = j;
-        } else if (j < lines.length - 1) {
-          // ligne de continuation d'une note multi-lignes
-          currentNote = { text: (l.text + (currentNote ? ' ' + currentNote.text : '')).trim() };
+          footnotes[`${i}:${m[1]}`] = [m[2], ...continuation]
+            .join(' ').replace(/\s+/g, ' ').trim();
+          continuation = [];
+          foundNote = true;
           cutoff = j;
         } else {
-          break;
+          // On accumule d'abord les lignes de continuation, même si la toute
+          // dernière ligne en est une. Elles ne seront retirées du corps que
+          // si une ligne numérotée est effectivement trouvée plus haut.
+          continuation.unshift(text);
         }
       }
-      if (cutoff < lines.length) lines.length = cutoff;
+      if (foundNote && cutoff < lines.length) lines.length = cutoff;
     }
     const figs = figCount < MAX_FIGS ? await extractPageImages(page) : [];
     figCount += figs.length;
@@ -448,8 +453,13 @@ async function extractEpub(buf, onProgress) {
 /* ---------- Contenu avec cache ---------- */
 
 async function getContent(book) {
+  const source = await window.livre.fileSignature(book.path);
   const cached = await window.livre.loadCache(book.id);
-  if (cached && cached.v === CACHE_V && Array.isArray(cached.paras)) return cached;
+  const cacheMatchesFile = cached && cached.source &&
+    cached.source.size === source.size && cached.source.mtimeMs === source.mtimeMs;
+  if (cached && cached.v === CACHE_V && cacheMatchesFile && Array.isArray(cached.paras)) {
+    return cached;
+  }
 
   const buf = await window.livre.readFile(book.path);
   throwIfCancelled();
@@ -477,6 +487,7 @@ async function getContent(book) {
   }
   const data = {
     v: CACHE_V,
+    source,
     paras: result.paras,
     words: result.words,
     footnotes: result.footnotes || {},

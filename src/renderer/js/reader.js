@@ -2,9 +2,21 @@
 
 /* ═══════════ Lecteur : rendu, pagination, navigation ═══════════ */
 
+let focusScrollTarget = null;
+let focusScrollTimer = null;
+
+function clearFocusScrollTarget() {
+  focusScrollTarget = null;
+  if (focusScrollTimer) {
+    clearTimeout(focusScrollTimer);
+    focusScrollTimer = null;
+  }
+}
+
 async function openBook(id) {
   const book = store.books.find((b) => b.id === id);
   if (!book) return;
+  clearFocusScrollTarget();
   loadCancelled = false;
   showLoader('Lecture du fichier…', { progress: true, cancelable: true });
   try {
@@ -17,7 +29,10 @@ async function openBook(id) {
     book.words = words;
     book.lastOpenedAt = Date.now();
     persist();
-    current = { book, paras, footnotes: footnotes || {}, page: 0, total: 1, totalCols: 1, cols: 1, colW: 0, lastCol: null, toc: [] };
+    current = {
+      book, paras, footnotes: footnotes || {}, page: 0, total: 1,
+      totalCols: 1, cols: 1, colW: 0, furthestProg: null, toc: [],
+    };
     searchState = { active: false, q: '', results: [], idx: 0 };
     $('#readerTitle').textContent = book.title;
     $('#runningHead').textContent = book.author ? `${book.title} — ${book.author}` : book.title;
@@ -195,25 +210,73 @@ function colOf(el) {
   return Math.round(el.offsetLeft / (current.colW + GAP));
 }
 
+function renderedTranslateX(el) {
+  const transform = getComputedStyle(el).transform;
+  if (!transform || transform === 'none') return 0;
+  const values = transform.match(/^matrix(3d)?\((.+)\)$/);
+  if (!values) return 0;
+  const parts = values[2].split(',').map(Number);
+  const x = values[1] ? parts[12] : parts[4];
+  return Number.isFinite(x) ? x : 0;
+}
+
+function hasFragmentOnPage(el, targetShift) {
+  if (!el) return false;
+  const content = $('#bookContent');
+  const viewport = $('#bookViewport').getBoundingClientRect();
+  // getClientRects() inclut la translation visuelle éventuellement en cours.
+  // On la retire, puis on compare au repère de la page cible : le résultat ne
+  // dépend donc pas des 260 ms de l'animation de glissement.
+  const renderedShift = renderedTranslateX(content);
+  const targetLeft = viewport.left - targetShift;
+  const targetRight = viewport.right - targetShift;
+  return [...el.getClientRects()].some((rect) =>
+    rect.width > 0 && rect.height > 0 &&
+    rect.right - renderedShift > targetLeft + 1 &&
+    rect.left - renderedShift < targetRight - 1 &&
+    rect.bottom > viewport.top + 1 && rect.top < viewport.bottom - 1
+  );
+}
+
 function goTo(page, save = true) {
   if (!current) return;
   if (store.settings.flow === 'scroll') { scrollBy(page); return; }
   const p = Math.max(0, Math.min(page, current.total - 1));
+  const targetShift = -p * current.cols * (current.colW + GAP);
   current.page = p;
-  $('#bookContent').style.transform =
-    `translateX(${-p * current.cols * (current.colW + GAP)}px)`;
+  $('#bookContent').style.transform = `translateX(${targetShift}px)`;
+
+  // En focus paragraphe, un changement de page doit déplacer le focus vers le
+  // premier bloc visible. Sinon toute la nouvelle page reste estompée.
+  if (store.settings.focus === 'para') {
+    const focusEl = current.focusPara != null
+      ? $(`#bookContent [data-i="${current.focusPara}"]`)
+      : null;
+    if (!hasFragmentOnPage(focusEl, targetShift)) {
+      const firstVisible = [...$('#bookContent').children]
+        .find((el) => hasFragmentOnPage(el, targetShift));
+      if (firstVisible) setFocusPara(Number(firstVisible.dataset.i), false);
+    }
+  }
+
   updateFoot();
   const col = p * current.cols;
+  // Une proportion reste comparable après un changement de police, de largeur
+  // ou de nombre de pages affichées, contrairement à un numéro de colonne.
+  const readingProg = col / Math.max(1, current.totalCols);
   if (save) {
-    if (current.lastCol != null && col > current.lastCol) {
-      const wpc = (current.book.words || 0) / Math.max(1, current.totalCols);
-      bumpDaily('words', Math.round((col - current.lastCol) * wpc));
+    if (current.furthestProg != null && readingProg > current.furthestProg) {
+      bumpDaily('words', Math.round(
+        (readingProg - current.furthestProg) * (current.book.words || 0)
+      ));
     }
     current.book.progress = current.total > 1 ? (p + 1) / current.total : 1;
     current.book.anchor = anchorAt(p);
     persist();
   }
-  current.lastCol = col;
+  current.furthestProg = current.furthestProg == null
+    ? readingProg
+    : Math.max(current.furthestProg, readingProg);
   tocHighlight();
 }
 
@@ -251,20 +314,39 @@ function scrollBy(page) {
   vp.scrollTop += dir * vp.clientHeight * 0.9;
 }
 
-function onScrolled() {
+function onScrolled(trackWords = true) {
   if (!current || store.settings.flow !== 'scroll') return;
   const vp = $('#bookViewport');
   const max = vp.scrollHeight - vp.clientHeight;
   const prog = max > 0 ? vp.scrollTop / max : 1;
-  if (current.lastProg != null && prog > current.lastProg) {
-    bumpDaily('words', Math.round((prog - current.lastProg) * (current.book.words || 0)));
+  if (trackWords !== false && current.furthestProg != null && prog > current.furthestProg) {
+    bumpDaily('words', Math.round((prog - current.furthestProg) * (current.book.words || 0)));
   }
-  current.lastProg = prog;
+  current.furthestProg = current.furthestProg == null
+    ? prog
+    : Math.max(current.furthestProg, prog);
   current.book.progress = prog;
   for (const el of $('#bookContent').children) {
     if (el.offsetTop + el.offsetHeight >= vp.scrollTop) {
       current.book.anchor = Number(el.dataset.i);
       break;
+    }
+  }
+  // Le comptage peut être neutralisé pendant une restauration, pas le focus :
+  // celui-ci doit suivre immédiatement la position effectivement restaurée.
+  if (store.settings.focus === 'para') {
+    if (focusScrollTarget != null) {
+      const target = $(`#bookContent [data-i="${focusScrollTarget}"]`);
+      if (hasFragmentOnPage(target, 0)) clearFocusScrollTarget();
+    } else {
+      const focusEl = current.focusPara != null
+        ? $(`#bookContent [data-i="${current.focusPara}"]`)
+        : null;
+      if (!hasFragmentOnPage(focusEl, 0)) {
+        const firstVisible = [...$('#bookContent').children]
+          .find((el) => hasFragmentOnPage(el, 0));
+        if (firstVisible) setFocusPara(Number(firstVisible.dataset.i), false);
+      }
     }
   }
   persist();
@@ -275,31 +357,47 @@ function onScrolled() {
 // Premier bloc qui démarre sur la page p : point d'ancrage stable
 // quand la mise en page change (police, taille, colonnes…)
 function anchorAt(p) {
-  const target = p * current.cols * (current.colW + GAP);
+  const targetShift = -p * current.cols * (current.colW + GAP);
   for (const el of $('#bookContent').children) {
-    if (el.offsetLeft >= target - 4) return Number(el.dataset.i);
+    if (hasFragmentOnPage(el, targetShift)) return Number(el.dataset.i);
   }
   return null;
 }
 
-function pageOfAnchor(anchor) {
+function pageOfAnchor(anchor, preferredPage = null) {
   const el = $(`#bookContent [data-i="${anchor}"]`);
-  return el ? Math.floor(colOf(el) / current.cols) : 0;
+  if (!el) return 0;
+  if (Number.isInteger(preferredPage)) {
+    const preferred = Math.max(0, Math.min(preferredPage, current.total - 1));
+    const shift = -preferred * current.cols * (current.colW + GAP);
+    if (hasFragmentOnPage(el, shift)) return preferred;
+  }
+  return Math.floor(colOf(el) / current.cols);
+}
+
+function pageFromSavedProgress() {
+  return current.book.progress
+    ? Math.max(0, Math.min(
+        Math.round(current.book.progress * current.total) - 1,
+        current.total - 1
+      ))
+    : 0;
 }
 
 function restorePosition() {
+  clearFocusScrollTarget();
   const b = current.book;
   if (store.settings.flow === 'scroll') {
     const vp = $('#bookViewport');
     const el = b.anchor != null ? $(`#bookContent [data-i="${b.anchor}"]`) : null;
     vp.scrollTop = el ? Math.max(0, el.offsetTop - 16) : (b.progress || 0) * (vp.scrollHeight - vp.clientHeight);
-    current.lastProg = null;
-    onScrolled();
+    onScrolled(false);
     return;
   }
-  let p = 0;
-  if (b.anchor != null) p = pageOfAnchor(b.anchor);
-  else if (b.progress) p = Math.round(b.progress * current.total) - 1;
+  const progressPage = pageFromSavedProgress();
+  const p = b.anchor != null
+    ? pageOfAnchor(b.anchor, progressPage)
+    : progressPage;
   goTo(p, false);
   updateFoot();
 }
@@ -313,7 +411,7 @@ function relayout() {
   if (store.settings.flow === 'scroll') {
     restorePosition();
   } else if (anchor != null) {
-    goTo(pageOfAnchor(anchor), false);
+    goTo(pageOfAnchor(anchor, pageFromSavedProgress()), false);
   } else {
     restorePosition();
   }
@@ -474,8 +572,12 @@ function setFocusPara(idx, scroll = true) {
   el.classList.add('pf-current');
   if (!scroll) return;
   if (store.settings.flow === 'scroll') {
+    focusScrollTarget = idx;
+    if (focusScrollTimer) clearTimeout(focusScrollTimer);
+    focusScrollTimer = setTimeout(clearFocusScrollTarget, 800);
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
   } else {
+    clearFocusScrollTarget();
     const page = Math.floor(colOf(el) / current.cols);
     if (page !== current.page) goTo(page);
   }
@@ -507,8 +609,19 @@ function updateFocusRuler() {
   const para = store.settings.focus === 'para' && readerVisible();
   const c = $('#bookContent');
   if (c) c.classList.toggle('parafocus', para);
-  if (para && current && current.focusPara == null) {
-    setFocusPara(current.book.anchor ?? 0, false);
+  if (para && current && c) {
+    const targetShift = store.settings.flow === 'pages'
+      ? -current.page * current.cols * (current.colW + GAP)
+      : 0;
+    const focusEl = current.focusPara != null
+      ? $(`#bookContent [data-i="${current.focusPara}"]`)
+      : null;
+    if (!hasFragmentOnPage(focusEl, targetShift)) {
+      const firstVisible = [...c.children]
+        .find((el) => hasFragmentOnPage(el, targetShift));
+      if (firstVisible) setFocusPara(Number(firstVisible.dataset.i), false);
+      else if (current.focusPara == null) setFocusPara(current.book.anchor ?? 0, false);
+    }
   }
 }
 

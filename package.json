@@ -1,13 +1,14 @@
 {
   "name": "montlivre",
   "productName": "MontLivre",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MontLivre — un lecteur qui transforme vos PDF et EPUB en véritable expérience de lecture : texture papier, typographie soignée, OCR, bionic reading.",
   "author": "Simon Courtois <simoncrts@protonmail.com>",
   "license": "MIT",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node tools/verify.js",
     "make-icon": "electron tools/make-icon.js",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win"

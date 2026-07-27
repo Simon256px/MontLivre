@@ -185,6 +185,200 @@ function editTags(id) {
 
 /* ---------- Import / export de la bibliothèque ---------- */
 
+function importedText(value, fallback = '') {
+  if (typeof value !== 'string') return fallback;
+  return value.replace(/\0/g, '').trim() || fallback;
+}
+
+function importedNumber(value, fallback = 0, min = 0, max = Number.MAX_SAFE_INTEGER) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
+}
+
+function importedId(value) {
+  return typeof value === 'string' && /^[a-z0-9-]{1,100}$/i.test(value)
+    ? value
+    : crypto.randomUUID();
+}
+
+function importedImage(value, types) {
+  if (typeof value !== 'string') return null;
+  const re = new RegExp(`^data:image/(?:${types});base64,[a-z0-9+/=]+$`, 'i');
+  return re.test(value) ? value : null;
+}
+
+function sanitizeImportedAnnotation(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const para = Math.floor(importedNumber(value.para, -1, -1));
+  const start = Math.floor(importedNumber(value.start, -1, -1));
+  const end = Math.floor(importedNumber(value.end, -1, -1));
+  if (para < 0 || start < 0 || end <= start) return null;
+  return {
+    id: importedId(value.id),
+    para,
+    start,
+    end,
+    color: HL_COLORS.includes(value.color) ? value.color : 'yellow',
+    note: importedText(value.note),
+    text: importedText(value.text),
+    created: importedNumber(value.created, Date.now()),
+  };
+}
+
+function sanitizeImportedBookmark(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const para = Math.floor(importedNumber(value.para, -1, -1));
+  if (para < 0) return null;
+  return {
+    id: importedId(value.id),
+    para,
+    label: importedText(value.label, 'Signet'),
+    created: importedNumber(value.created, Date.now()),
+  };
+}
+
+function sanitizeImportedSketch(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const para = Math.floor(importedNumber(value.para, -1, -1));
+  const image = importedImage(value.image, 'png');
+  if (para < 0 || !image) return null;
+  return {
+    id: importedId(value.id),
+    para,
+    image,
+    created: importedNumber(value.created, Date.now()),
+  };
+}
+
+function sanitizeImportedBook(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const filePath = importedText(value.path);
+  if (!filePath || !/\.(pdf|epub)$/i.test(filePath)) return null;
+  const format = value.format === 'epub' || /\.epub$/i.test(filePath) ? 'epub' : 'pdf';
+  const title = importedText(value.title,
+    basename(filePath).replace(/\.(pdf|epub)$/i, '') || 'Sans titre');
+  const tags = Array.isArray(value.tags)
+    ? [...new Set(value.tags
+        .map((t) => importedText(t).replace(/["<>]/g, '').slice(0, 80))
+        .filter(Boolean))]
+    : [];
+  const annotations = Array.isArray(value.annotations)
+    ? value.annotations.map(sanitizeImportedAnnotation).filter(Boolean)
+    : [];
+  const bookmarks = Array.isArray(value.bookmarks)
+    ? value.bookmarks.map(sanitizeImportedBookmark).filter(Boolean)
+    : [];
+  const sketches = Array.isArray(value.sketches)
+    ? value.sketches.map(sanitizeImportedSketch).filter(Boolean)
+    : [];
+  return {
+    id: importedId(value.id),
+    path: filePath,
+    format,
+    title,
+    author: importedText(value.author),
+    pages: Math.floor(importedNumber(value.pages)),
+    cover: importedImage(value.cover, 'png|jpe?g|gif|webp|svg\\+xml'),
+    words: value.words == null ? null : Math.floor(importedNumber(value.words)),
+    progress: importedNumber(value.progress, 0, 0, 1),
+    anchor: value.anchor == null ? null : Math.floor(importedNumber(value.anchor)),
+    readingSeconds: Math.floor(importedNumber(value.readingSeconds)),
+    annotations,
+    bookmarks,
+    sketches,
+    favorite: value.favorite === true,
+    tags,
+    addedAt: importedNumber(value.addedAt, Date.now()),
+    lastOpenedAt: importedNumber(value.lastOpenedAt),
+    companionPos: importedNumber(value.companionPos, 0, 0, 1),
+  };
+}
+
+function mergeImportedItems(currentItems, importedItems, fingerprint) {
+  const out = Array.isArray(currentItems)
+    ? currentItems.filter((item) => item && typeof item === 'object')
+    : [];
+  const ids = new Set(out.map((item) => item && item.id).filter(Boolean));
+  const contents = new Set(out.map(fingerprint));
+  for (const item of importedItems) {
+    const content = fingerprint(item);
+    if (ids.has(item.id) || contents.has(content)) continue;
+    out.push(item);
+    ids.add(item.id);
+    contents.add(content);
+  }
+  return out;
+}
+
+function normalizeImportedSettings(raw) {
+  const custom = raw && raw.custom && typeof raw.custom === 'object' && !Array.isArray(raw.custom)
+    ? raw.custom : {};
+  const merged = {
+    ...DEFAULT_SETTINGS,
+    ...(raw || {}),
+    custom: { ...DEFAULT_SETTINGS.custom, ...custom },
+    // Une sauvegarde antérieure à l'import de polices ne possède pas encore
+    // ce champ : conserver alors les polices déjà présentes sur ce profil.
+    customFonts: Array.isArray(raw && raw.customFonts)
+      ? raw.customFonts
+      : (typeof store !== 'undefined' && Array.isArray(store.settings?.customFonts)
+          ? store.settings.customFonts : DEFAULT_SETTINGS.customFonts),
+  };
+
+  // Premier passage portable pour les anciennes versions ; il filtre aussi
+  // les champs que le normaliseur global éventuel ne connaît pas.
+  const enumValue = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
+  if (typeof merged.focus === 'boolean') merged.focus = merged.focus ? 'ruler' : 'off';
+  if (merged.spread === 1 || merged.spread === 2) merged.spread = String(merged.spread);
+  merged.theme = enumValue(merged.theme, THEMES, DEFAULT_SETTINGS.theme);
+  merged.flow = enumValue(merged.flow, ['pages', 'scroll'], DEFAULT_SETTINGS.flow);
+  merged.spread = enumValue(merged.spread, ['auto', '1', '2'], DEFAULT_SETTINGS.spread);
+  merged.pageAnim = enumValue(merged.pageAnim, ['slide', 'curl', 'none'], DEFAULT_SETTINGS.pageAnim);
+  merged.focus = enumValue(merged.focus, ['off', 'ruler', 'para'], DEFAULT_SETTINGS.focus);
+  merged.lastHlColor = enumValue(merged.lastHlColor, HL_COLORS, DEFAULT_SETTINGS.lastHlColor);
+  if (typeof TEXTURES !== 'undefined') {
+    merged.texture = enumValue(merged.texture, TEXTURES, DEFAULT_SETTINGS.texture);
+  }
+  for (const key of ['justify', 'pageSound', 'bionic', 'instantHl', 'dictOnline', 'bookDesign']) {
+    merged[key] = typeof merged[key] === 'boolean' ? merged[key] : DEFAULT_SETTINGS[key];
+  }
+  const limits = {
+    fontSize: [12, 40], lineHeight: [1.1, 3], pageWidth: [320, 1200],
+    pageMargin: [12, 160], bionicIntensity: [0.1, 1], rsvpWpm: [50, 2000],
+    dailyGoalMin: [0, 600], pomodoroFocus: [1, 180], pomodoroBreak: [1, 60],
+    textureIntensity: [0, 1],
+  };
+  for (const [key, [min, max]] of Object.entries(limits)) {
+    if (DEFAULT_SETTINGS[key] !== undefined) {
+      merged[key] = importedNumber(merged[key], DEFAULT_SETTINGS[key], min, max);
+    }
+  }
+  for (const key of ['bg', 'paper', 'ink']) {
+    if (!/^#[0-9a-f]{6}$/i.test(merged.custom[key] || '')) {
+      merged.custom[key] = DEFAULT_SETTINGS.custom[key];
+    }
+  }
+  const fonts = Array.isArray(merged.customFonts) ? merged.customFonts : [];
+  merged.customFonts = fonts.flatMap((font) => {
+    if (!font || typeof font !== 'object') return [];
+    const name = importedText(font.name).replace(/["<>]/g, '').slice(0, 80);
+    const data = typeof font.data === 'string' && /^[a-z0-9+/=]+$/i.test(font.data)
+      ? font.data : '';
+    return name && data ? [{ name, data }] : [];
+  }).filter((font, i, all) => all.findIndex((f) => f.name === font.name) === i);
+  const customName = typeof merged.font === 'string' && merged.font.startsWith('custom:')
+    ? merged.font.slice(7) : null;
+  if (!Object.hasOwn(FONTS, merged.font) &&
+      (!customName || !merged.customFonts.some((font) => font.name === customName))) {
+    merged.font = DEFAULT_SETTINGS.font;
+  }
+  if (typeof normalizeSettings === 'function') {
+    store.settings = merged;
+    return normalizeSettings();
+  }
+  return merged;
+}
+
 async function exportLibrary() {
   const data = {
     app: 'montlivre',
@@ -215,17 +409,31 @@ async function importLibrary() {
     return;
   }
   // « livre » : sauvegardes d'avant le renommage en MontLivre
-  if (!['montlivre', 'livre'].includes(data.app) || !Array.isArray(data.books)) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      !['montlivre', 'livre'].includes(data.app) || !Array.isArray(data.books)) {
     alert("Ce fichier n'est pas un export de bibliothèque MontLivre.");
     return;
   }
-  let added = 0, merged = 0;
-  for (const ib of data.books) {
+  let added = 0, merged = 0, ignored = 0;
+  for (const rawBook of data.books) {
+    const ib = sanitizeImportedBook(rawBook);
+    if (!ib) { ignored++; continue; }
     const existing = store.books.find((b) => b.id === ib.id || b.path === ib.path);
     if (existing) {
-      // fusion : on garde la lecture la plus avancée / la plus récente
-      existing.annotations = ib.annotations || existing.annotations;
-      existing.bookmarks = ib.bookmarks || existing.bookmarks;
+      // Fusion additive : une restauration ne doit jamais effacer les notes
+      // ou croquis créés depuis la sauvegarde importée.
+      existing.annotations = mergeImportedItems(
+        existing.annotations, ib.annotations,
+        (a) => `${a.para}:${a.start}:${a.end}:${a.color}:${a.text}:${a.note || ''}`
+      );
+      existing.bookmarks = mergeImportedItems(
+        existing.bookmarks, ib.bookmarks,
+        (bm) => `${bm.para}:${bm.label}`
+      );
+      existing.sketches = mergeImportedItems(
+        existing.sketches, ib.sketches,
+        (sk) => `${sk.para}:${sk.image}`
+      );
       existing.tags = [...new Set([...(existing.tags || []), ...(ib.tags || [])])];
       existing.favorite = existing.favorite || ib.favorite;
       if ((ib.lastOpenedAt || 0) > (existing.lastOpenedAt || 0)) {
@@ -240,22 +448,38 @@ async function importLibrary() {
       added++;
     }
   }
-  if (data.achievements) {
+  if (data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings)) {
+    store.settings = normalizeImportedSettings(data.settings);
+    if (typeof registerCustomFont === 'function') {
+      const validFonts = [];
+      for (const font of store.settings.customFonts || []) {
+        if (await registerCustomFont(font.name, font.data)) validFonts.push(font);
+      }
+      store.settings.customFonts = validFonts;
+      if (typeof normalizeSettings === 'function') store.settings = normalizeSettings(store.settings);
+    }
+    if (typeof rebuildFontSelect === 'function') rebuildFontSelect();
+    if (typeof syncControls === 'function') syncControls();
+    if (current && readerVisible() && typeof relayout === 'function') relayout();
+  }
+  if (data.achievements && typeof data.achievements === 'object' && !Array.isArray(data.achievements)) {
     store.achievements = { ...data.achievements, ...store.achievements };
   }
   // stats : on prend le max par jour (évite de doubler lors d'une restauration)
-  if (data.stats && data.stats.daily) {
+  if (data.stats && data.stats.daily && typeof data.stats.daily === 'object') {
     for (const [day, d] of Object.entries(data.stats.daily)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !d || typeof d !== 'object') continue;
       const cur = store.stats.daily[day] || { seconds: 0, words: 0 };
       store.stats.daily[day] = {
-        seconds: Math.max(cur.seconds, d.seconds || 0),
-        words: Math.max(cur.words, d.words || 0),
+        seconds: Math.max(importedNumber(cur.seconds), importedNumber(d.seconds)),
+        words: Math.max(importedNumber(cur.words), importedNumber(d.words)),
       };
     }
   }
   persist();
   renderLibrary();
-  toast(`Import terminé : ${added} ajouté(s), ${merged} fusionné(s)`);
+  toast(`Import terminé : ${added} ajouté(s), ${merged} fusionné(s)` +
+    (ignored ? `, ${ignored} ignoré(s)` : ''));
 }
 
 function setShelf(shelf) {

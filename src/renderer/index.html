@@ -2,6 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' data: blob:; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://fr.wiktionary.org; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none';">
   <title>MontLivre</title>
   <link rel="stylesheet" href="../../node_modules/@fontsource-variable/bricolage-grotesque/index.css">
   <link rel="stylesheet" href="../../node_modules/@fontsource/literata/400.css">
@@ -18,7 +20,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body data-theme="creme">
-  <div id="grain"></div>
+  <div id="grain" aria-hidden="true"></div>
 
   <!-- ═══════════ Bibliothèque ═══════════ -->
   <section id="libraryScreen" class="screen">
@@ -238,16 +240,25 @@
 
         <section class="opt-pane hidden" data-pane="apparence">
           <div class="setting">
-            <label>Thème</label>
-            <div class="theme-dots big" id="optDots"></div>
+            <label>Ambiance de lecture</label>
+            <div class="theme-gallery" id="themeGallery" role="radiogroup" aria-label="Ambiance de lecture"></div>
           </div>
           <div class="setting">
+            <label>Texture de page</label>
+            <div class="texture-gallery" id="textureGallery" role="radiogroup" aria-label="Texture de page"></div>
+          </div>
+          <div class="setting" id="textureIntensitySetting">
+            <label for="textureRange">Présence de la texture <span class="val" id="textureVal"></span></label>
+            <input type="range" id="textureRange" min="0" max="100" step="1">
+          </div>
+          <div class="setting custom-theme-setting" id="customThemePanel">
             <label>Thème sur mesure</label>
             <div class="color-row">
               <label class="color-pick" title="Fond">Fond<input type="color" id="colBg"></label>
               <label class="color-pick" title="Page">Page<input type="color" id="colPaper"></label>
               <label class="color-pick" title="Texte">Texte<input type="color" id="colInk"></label>
             </div>
+            <p class="contrast-status" id="contrastStatus" role="status"></p>
           </div>
           <div class="setting toggle-row">
             <label for="bookDesignChk">Mise en page d’auteur (chapitres, lettrines)</label>
