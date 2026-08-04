@@ -6,8 +6,9 @@ MontLivre est un lecteur de livres numériques pour Windows. Il lit EPUB, MOBI,
 AZW3, FB2 et CBZ, il tient dans une poignée de mégaoctets, il fonctionne hors
 ligne, il ne demande pas de compte et il n'envoie rien nulle part.
 
-> ⚠️ **Branche `v2/tauri-foliate` — chantier en cours.** La v1 (Electron) reste
-> sur `master`. Cette branche la remplace entièrement.
+> ⚠️ **Chantier en cours.** `master` porte désormais la v2. La v1 Electron
+> complète est archivée sur la branche [`v1`](../../tree/v1), et ses installeurs
+> restent disponibles dans les [releases](../../releases).
 
 ## Ce qui change
 
