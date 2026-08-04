@@ -45,7 +45,7 @@ Réécriture complète. La v1 Electron est archivée sur la branche
 
 | | v1.1.0 | 2.0.0 |
 |---|---|---|
-| Installeur | 122 Mo | **3,55 Mo** |
+| Installeur | 122 Mo | **3,54 Mo** |
 | Exécutable | — | 5,56 Mo |
 | Mémoire au repos | ~180 Mo | 28 Mo |
 | Code du projet | 6 926 lignes | 2 530 lignes |

@@ -24,7 +24,7 @@ Windows.
 | Moteur de lecture | maison (`extract.js`) | foliate-js |
 | Formats | PDF, EPUB | EPUB, MOBI, AZW3, FB2, CBZ + PDF (page fixe) |
 | Chaîne de build | Node + npm + electron-builder | Rust seul, aucun bundler |
-| Installeur | 122 Mo | **3,55 Mo** |
+| Installeur | 122 Mo | **3,54 Mo** |
 | Mémoire au repos | ~180 Mo | 28 Mo |
 
 **Le PDF perd sa remise en page.** foliate-js rend les PDF en pages fixes, pas en
@@ -90,7 +90,7 @@ Les icônes sont déjà générées dans `src-tauri/icons/`. Si le logo change :
 powershell -ExecutionPolicy Bypass -File tools/make-icons.ps1
 ```
 
-L'installeur produit pèse **3,55 Mo**.
+L'installeur produit pèse **3,54 Mo**.
 
 ## Architecture
 
