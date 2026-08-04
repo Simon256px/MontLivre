@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="build/icon.png" alt="MontLivre" width="160">
-</p>
-
 <h1 align="center">MontLivre</h1>
 
 <p align="center"><strong>Ranger, lire, régler. Rien d'autre.</strong></p>
