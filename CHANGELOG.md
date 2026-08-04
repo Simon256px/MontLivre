@@ -1,6 +1,6 @@
 # Journal des versions
 
-## 2.0.0 — non publiée
+## 2.0.0
 
 Réécriture complète. La v1 Electron est archivée sur la branche
 [`v1`](../../tree/v1) ; ses installeurs restent dans les
@@ -45,16 +45,18 @@ Réécriture complète. La v1 Electron est archivée sur la branche
 
 | | v1.1.0 | 2.0.0 |
 |---|---|---|
+| Installeur | 122 Mo | **3,55 Mo** |
+| Exécutable | — | 5,56 Mo |
+| Mémoire au repos | ~180 Mo | 28 Mo |
 | Code du projet | 6 926 lignes | 2 530 lignes |
-| Ressources embarquées | ~90 Mo | 6,0 Mo |
-| Installeur | 122 Mo | à mesurer |
 
-Sur les 6,0 Mo embarqués, 5,1 sont pdf.js — chargé dynamiquement, seulement à
+Soit **97 % de moins** pour l'installeur. Les ressources embarquées pèsent 6,0 Mo
+avant compression, dont 5,1 pour pdf.js — chargé dynamiquement, seulement à
 l'ouverture d'un PDF.
 
-### À savoir avant de publier
+### Vérifié
 
-La coque Rust n'a jamais été compilée : la machine de développement n'a ni Rust
-ni les Build Tools C++. Le front est vérifié dans un navigateur, le Rust ne l'est
-pas. Cette version ne doit pas être publiée avant un `cargo tauri build` réussi
-et un essai réel.
+`cargo build`, `cargo test` (3 tests) et `cargo clippy -- -D warnings` passent.
+L'application a été lancée avec un EPUB en argument : le fichier est copié dans
+le profil, les métadonnées et la couverture en sont extraites, le livre s'ouvre,
+le paginateur rend une progression réelle et la position est enregistrée en CFI.
