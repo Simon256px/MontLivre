@@ -79,7 +79,21 @@ powershell -ExecutionPolicy Bypass -File tools/serve.ps1
 cargo tauri build --manifest-path src-tauri/Cargo.toml
 ```
 
-Le NSIS sort dans `src-tauri/target/release/bundle/nsis/`.
+Le NSIS sort dans `src-tauri/target/release/bundle/nsis/`. Il déclare
+l'application comme lecteur pour `.epub`, `.mobi`, `.azw3`, `.azw`, `.fb2`,
+`.cbz` et `.pdf` : un double-clic range le livre dans la bibliothèque et
+l'ouvre. Si MontLivre tourne déjà, c'est la fenêtre existante qui s'en charge.
+
+Les icônes sont déjà générées dans `src-tauri/icons/`. Si le logo change :
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/make-icons.ps1
+```
+
+> ⚠️ La coque Rust **n'a jamais été compilée** : ni Rust ni les Build Tools ne
+> sont installés sur la machine de développement pour l'instant. Le front, lui,
+> est vérifié dans un navigateur. Attendre des ajustements au premier
+> `cargo tauri dev`.
 
 ## Architecture
 

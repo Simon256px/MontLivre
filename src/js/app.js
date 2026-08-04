@@ -9,8 +9,11 @@ import {
   bookFile,
   coverUrl,
   deleteBook,
+  extensionOf,
   isNative,
   loadLibrary,
+  onOpenRequest,
+  pendingOpen,
   pickFiles,
   saveLibrary,
 } from "./store.js";
@@ -118,14 +121,16 @@ function drawSettings() {
 }
 
 async function addFiles(picked) {
-  const keep = picked.filter((item) => EXTENSIONS.includes(item.name.split(".").pop().toLowerCase()));
-  if (!keep.length) return;
+  const keep = picked.filter((item) => EXTENSIONS.includes(extensionOf(item.name)));
+  if (!keep.length) return [];
 
+  const added = [];
   for (const item of keep) {
     try {
       const entry = await ingest(item);
       if (entry.hasCover) entry.coverUrl = await coverUrl(entry.id);
       state.books.unshift(entry);
+      added.push(entry);
       drawShelf();
     } catch (error) {
       console.error(`Import impossible : ${item.name}`, error);
@@ -133,6 +138,14 @@ async function addFiles(picked) {
     }
   }
   await persist();
+  return added;
+}
+
+/** Chemin reçu du système : on le range puis on l'ouvre — c'est ce que le
+ *  double-clic sur un fichier veut dire. */
+async function openFromPath(path) {
+  const [entry] = await addFiles([{ name: path.split(/[\\/]/).pop(), path }]);
+  if (entry) await openBook(entry);
 }
 
 /** Le glisser-déposer n'a rien de commun entre les deux mondes : Tauri le
@@ -186,6 +199,10 @@ async function boot() {
     }),
   );
   if (withCovers.length) drawShelf();
+
+  onOpenRequest(openFromPath);
+  const requested = await pendingOpen();
+  if (requested) await openFromPath(requested);
 }
 
 qs("#go-settings").addEventListener("click", () => setView("settings"));

@@ -104,6 +104,19 @@ export async function saveCover(id, blob) {
   await invoke("cover_write", { id, bytes });
 }
 
+/** Fichier réclamé au lancement par double-clic, s'il y en a un. */
+export async function pendingOpen() {
+  if (!isNative) return null;
+  return invoke("take_pending_open");
+}
+
+/** Double-clic alors que l'application tourne déjà : le plugin single-instance
+ *  transmet le chemin à l'instance en place plutôt que d'en ouvrir une seconde. */
+export function onOpenRequest(callback) {
+  if (!isNative) return;
+  tauri.event.listen("montlivre://open-file", (event) => callback(event.payload));
+}
+
 export async function coverUrl(id) {
   if (!isNative) return MEMORY.get(`cover:${id}`) ?? null;
   const bytes = await invoke("cover_bytes", { id });

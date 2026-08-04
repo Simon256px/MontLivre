@@ -27,12 +27,13 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "fileAssociations": [
+      { "ext": ["epub"], "name": "Livre EPUB", "description": "Livre EPUB", "role": "Viewer" },
+      { "ext": ["mobi", "azw3", "azw"], "name": "Livre Kindle", "description": "Livre Kindle", "role": "Viewer" },
+      { "ext": ["fb2"], "name": "Livre FictionBook", "description": "Livre FictionBook", "role": "Viewer" },
+      { "ext": ["cbz"], "name": "Bande dessinee", "description": "Bande dessinée", "role": "Viewer" },
+      { "ext": ["pdf"], "name": "Document PDF", "description": "Document PDF", "role": "Viewer" }
     ],
     "copyright": "© Simon Courtois — MIT",
     "shortDescription": "Ranger, lire, régler.",
