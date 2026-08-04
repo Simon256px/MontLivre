@@ -1,17 +1,15 @@
-# Dependencies
-node_modules/
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
 
 # Build output
+release/
 dist/
 out/
-release/
 
-# Electron
-.electron/
-
-# Logs
+# Reliquats de la v1 Electron (à supprimer, plus aucune étape npm)
+node_modules/
 *.log
-npm-debug.log*
 
 # OS
 .DS_Store

@@ -4,99 +4,124 @@
 
 <h1 align="center">MontLivre</h1>
 
-<p align="center"><strong>Un lecteur élégant qui transforme vos PDF et EPUB en véritable expérience de lecture.</strong></p>
+<p align="center"><strong>Ranger, lire, régler. Rien d'autre.</strong></p>
 
-MontLivre est une application de bureau (Electron) qui prend vos PDF et EPUB et les re-met en page comme un vrai livre : texture papier, typographie soignée, modes lumière, Bionic Reading. 100 % offline, aucun compte, aucune donnée envoyée.
+MontLivre est un lecteur de livres numériques pour Windows. Il lit EPUB, MOBI,
+AZW3, FB2 et CBZ, il tient dans une poignée de mégaoctets, il fonctionne hors
+ligne, il ne demande pas de compte et il n'envoie rien nulle part.
 
-> 📥 **[Télécharger la dernière version](https://github.com/Simon256px/MontLivre/releases/latest)** — ensuite, les mises à jour se font depuis l'app (Options → Mise à jour).
->
-> 🗺️ La liste complète des fonctionnalités envisagées et leur avancement : [ROADMAP.md](ROADMAP.md)
+> ⚠️ **Branche `v2/tauri-foliate` — chantier en cours.** La v1 (Electron) reste
+> sur `master`. Cette branche la remplace entièrement.
 
-## ✨ Fonctionnalités
+## Ce qui change
 
-### Lecture
-- **Reflow intelligent** : extraction du texte (pdf.js), suppression des en-têtes/pieds de page répétés, paragraphes et césures recollés, chapitres détectés
-- **PDF et EPUB** avec le même moteur de rendu, images incluses
-- **Notes de bas de page en infobulle** : cliquez l'appel de note, la note apparaît sans quitter la page
-- **Lecture parallèle** ⿻ : un second livre s'ouvre dans un volet à côté du principal (œuvre + analyse, VO + traduction), avec sa propre position mémorisée
-- **OCR des PDF scannés** : reconnaissance de texte hors ligne (Tesseract WASM, modèles français + anglais embarqués), proposée automatiquement quand un PDF n'a pas de texte
-- **Pagination façon livre** : simple ou double page (auto selon la fenêtre), ou défilement continu
-- **Sommaire interactif**, recherche plein texte (Ctrl+F, insensible aux accents), plein écran immersif (F11)
-- **4 modes lumière** : crème, sépia, ambre (sans lumière bleue), nuit — avec grain papier
-- **Typographie fine** : 7 polices dont Literata, Atkinson Hyperlegible et OpenDyslexic ; taille, interligne, largeur, justification
+La v1 était un Electron de ~6 900 lignes avec un moteur de remise en page maison
+et un installeur de 122 Mo. La v2 délègue la lecture à
+[foliate-js](https://github.com/johnfactotum/foliate-js) et remplace Electron par
+[Tauri 2](https://v2.tauri.app/), qui s'appuie sur le WebView2 déjà présent sur
+Windows.
 
-### Vitesse & confort
-- **Bionic reading** à intensité réglable
-- **Modes focus** : règle de lecture qui suit la souris, ou paragraphe par paragraphe (le reste s'estompe, ↑/↓ pour avancer)
-- **Mode RSVP** : lecture rapide mot à mot avec point de fixation, 150–700 mots/min. En pause, un aperçu lisible du passage (mot courant surligné, repères de chapitres) permet de choisir d'un clic où reprendre
-- **Dictionnaire** au double-clic sur un mot (Wiktionnaire — en ligne, opt-in)
+| | v1 | v2 |
+|---|---|---|
+| Coque | Electron | Tauri 2 (WebView2) |
+| Moteur de lecture | maison (`extract.js`) | foliate-js |
+| Formats | PDF, EPUB | EPUB, MOBI, AZW3, FB2, CBZ + PDF (page fixe) |
+| Chaîne de build | Node + npm + electron-builder | Rust seul, aucun bundler |
+| Installeur | 122 Mo | visé : moins de 15 Mo |
 
-### Fichiers lourds
-- **Chargement interruptible** : barre de progression et bouton pour annuler un gros PDF/EPUB
-- **Reprise fiable** : la position est sauvegardée à la fermeture et un bouton « Reprendre » ramène exactement où tu t'étais arrêté
+**Le PDF perd sa remise en page.** foliate-js rend les PDF en pages fixes, pas en
+texte refluant. C'est le prix de l'abandon du moteur maison, et c'est le même
+compromis que fait Readest.
 
-### Annotations
-- **Surlignage 4 couleurs** (sélectionner du texte → palette flottante), notes attachées, signets
-- **Surlignage instantané** 🖍 : sélectionner suffit, la dernière couleur s'applique d'un geste
-- **Dessin au stylet** : croquis directement sur la page (pression gérée), galerie dans le panneau Notes
-- **Recherche** dans les notes ; **export Markdown et PDF**, regroupés par chapitre
+Fonctions de la v1 mises de côté pour l'instant : OCR, RSVP, mode focus, bionic
+reading, stylet, succès, Pomodoro, dictionnaire, lecture parallèle. Les
+annotations et les statistiques reviendront après la v2.0.
 
-### Personnalisation & accessibilité
-- **Page Options plein écran** façon menu de jeu, avec remise à zéro (stats, réglages, tout)
-- **Mise en page d'auteur** : chapitres sur nouvelle page, titres ornés, lettrines
-- 5 thèmes dont un **contraste élevé**, plus un **thème sur mesure** (couleurs fond/page/texte)
-- **Import de polices** personnalisées (.ttf/.otf/.woff), 8 polices embarquées dont Manrope
-- Marges réglables, **animations de page** (glissement / page tournée / aucune), **sons de tournage**
-- Police OpenDyslexic, navigation clavier
-- **Succès à débloquer** 🏆 (livres, mots, heures, streaks…)
-- **Mise à jour intégrée** : bouton « Vérifier les mises à jour » dans Options (bibliothèque et réglages conservés)
+## Installer la chaîne de développement
 
-### Bibliothèque & statistiques
-- Couvertures extraites automatiquement, progression, recherche par titre/auteur/tag
-- **Étagères** automatiques (À lire / En cours / Terminés), **favoris** ★ et **tags** éditables
-- **Import/export de la bibliothèque** en JSON (sauvegarde et migration)
-- **Reprise exacte** de la lecture, ancrée au paragraphe (survit aux changements de mise en page)
-- **Objectif quotidien** (anneau de progression) et **minuteur Pomodoro** lecture/pause
-- **Stats quotidiennes** : temps de lecture, streak 🔥, vitesse moyenne, graphique 14 jours
-
-## 🚀 Utilisation
+Il n'y a **ni Node, ni npm, ni étape de build front**. Le seul outillage est Rust.
 
 ```bash
-npm install
-npm start
+winget install --id Rustlang.Rustup
 ```
 
-Ajoutez des livres par le bouton **＋ Ajouter**, par glisser-déposer, ou en ligne de commande :
+Puis installer « Desktop development with C++ » depuis
+[Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/),
+et enfin :
 
 ```bash
-npx electron . chemin/vers/livre.pdf
+rustup default stable-msvc
 ```
 
-### Raccourcis du lecteur
+```bash
+cargo install tauri-cli --version "^2"
+```
 
-| Touche | Action |
-|---|---|
-| `←` `→` / espace / molette | tourner les pages |
-| double-clic sur un mot | définition (dictionnaire) |
-| `Ctrl+F` | rechercher dans le livre |
-| `F11` | plein écran |
-| `Échap` | fermer (dictionnaire → recherche → panneaux → lecteur) |
+Le premier `cargo build` prend plusieurs minutes : il compile toute l'arborescence
+de dépendances de Tauri. Les suivants sont incrémentaux.
 
-## 🛠️ Stack technique
+## Lancer
 
-- [Electron](https://www.electronjs.org/) — application de bureau multiplateforme
-- [pdf.js](https://mozilla.github.io/pdf.js/) — parsing et extraction de texte des PDF
-- [JSZip](https://stuk.github.io/jszip/) — lecture des EPUB
-- HTML/CSS/JS sans framework ni bundler
+```bash
+cargo tauri dev --manifest-path src-tauri/Cargo.toml
+```
 
-### Hooks de test
+Pour regarder l'interface **sans** la chaîne Rust, un serveur statique de
+dépannage sert `src/` tel quel dans un navigateur, sur http://localhost:8123 :
 
-Variables d'environnement pour les tests automatisés :
+```bash
+powershell -ExecutionPolicy Bypass -File tools/serve.ps1
+```
 
-- `LIVRE_USERDATA=dossier` — isole le profil (store + cache)
-- `LIVRE_EVAL=script.js` — exécute un script dans le renderer et logge son résultat
-- `LIVRE_SHOT=capture.png` (+ `LIVRE_SHOT_DELAY=ms`) — capture l'écran puis quitte
+## Construire l'installeur
 
-## 📄 Licence
+```bash
+cargo tauri build --manifest-path src-tauri/Cargo.toml
+```
+
+Le NSIS sort dans `src-tauri/target/release/bundle/nsis/`.
+
+## Architecture
+
+```
+src/                  front — HTML, CSS et ES modules natifs, aucun bundler
+├─ css/               tokens.css porte toute l'identité visuelle
+├─ js/
+│  ├─ app.js          routeur des trois vues
+│  ├─ library.js      étagère, recherche
+│  ├─ reader.js       enrobage de <foliate-view>
+│  ├─ settings.js     thèmes, typographie, accent
+│  └─ ui/             dom.js, shapes.js (formes Y2K + icônes), cover.js
+└─ vendor/foliate-js/ moteur de lecture (MIT) — arrive au jalon 3
+
+src-tauri/            coque Rust
+└─ src/store.rs       tous les accès disque ; le front n'a aucune permission fs
+```
+
+Le front ne reçoit aucune permission `fs` : il manipule des identifiants, et
+`store.rs` les traduit en chemins sous le dossier de données de l'application.
+Les livres importés sont **copiés** dans `%APPDATA%/com.simoncrts.montlivre/books/`.
+
+## Identité visuelle
+
+Affiche typographique suisse pour le chrome, formes Y2K en ponctuation, palette
+Yolk / Ochre / Violet / Moss sur Coal / Ash / Cloud. Trois règles tiennent le
+tout : aucun angle arrondi, aucune ombre floutée, une seule couleur vive à
+l'écran à la fois.
+
+La page de lecture, elle, ne reçoit rien de tout ça : sérif noire sur papier,
+sans décoration ni couleur.
+
+## Vérifier
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
+```bash
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+```
+
+## Licence
 
 MIT

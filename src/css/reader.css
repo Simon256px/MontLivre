@@ -1,0 +1,209 @@
+/* La page de lecture ne reçoit rien du style de l'affiche : pas d'accent,
+   pas d'ombre, pas de forme. Du texte noir sur du papier, et c'est tout. */
+
+.view--reader {
+  grid-template-rows: 1fr;
+  padding: 0;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--paper-ink);
+}
+
+.chrome {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  padding: 7px 10px;
+  background: var(--paper);
+  border-bottom: var(--rule);
+  transition: transform var(--dur) var(--ease);
+}
+
+/* Immersion : la barre se retire dès qu'on tourne une page, revient au moindre
+   mouvement de souris ou à la touche Échap. */
+body.is-immersive .chrome {
+  transform: translateY(-101%);
+}
+
+.chrome .btn {
+  border-color: transparent;
+  color: var(--paper-ink);
+}
+.chrome .btn:hover {
+  border-color: var(--paper-ink);
+  box-shadow: none;
+  transform: none;
+}
+
+.chrome__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--paper-ink);
+  opacity: 0.65;
+}
+
+.chrome__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.page {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--step) * 8) var(--read-margin, 6vw) calc(var(--step) * 6);
+  overflow: auto;
+  font-family: var(--font-read);
+  font-size: var(--read-size, 18px);
+  line-height: var(--read-leading, 1.62);
+  color: var(--paper-ink);
+}
+
+.page__body {
+  max-width: var(--read-measure, 62ch);
+  margin: 0 auto;
+  hyphens: auto;
+}
+
+.page__body p {
+  margin: 0;
+  text-indent: 1.4em;
+}
+.page__body p:first-of-type {
+  text-indent: 0;
+}
+
+.page__body h2 {
+  margin: 2.4em 0 1em;
+  font-family: var(--font-read);
+  font-size: 1.05em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-indent: 0;
+}
+
+/* foliate-js remplace .page__body par son propre conteneur au jalon 3. */
+foliate-view {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Sommaire ---- */
+
+.toc {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 25;
+  width: min(340px, 84vw);
+  padding: calc(var(--step) * 7) calc(var(--step) * 2.5) calc(var(--step) * 3);
+  overflow: auto;
+  background: var(--paper);
+  border-right: var(--rule-thick);
+}
+
+.toc__head {
+  margin: 0 0 var(--step);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--paper-ink);
+  opacity: 0.6;
+}
+
+.toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc__list li {
+  border-top: var(--rule);
+}
+
+.toc__link {
+  display: block;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  background: none;
+  color: var(--paper-ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toc__link:hover {
+  padding-left: 8px;
+}
+
+.toc__link[data-depth="1"] {
+  padding-left: 16px;
+  font-size: 12px;
+  opacity: 0.75;
+}
+.toc__link[data-depth="1"]:hover {
+  padding-left: 24px;
+}
+
+.toc__link[aria-current="true"] {
+  font-weight: 700;
+}
+
+/* ---- Progression ---- */
+
+.rail {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--step) * 2);
+  padding: 10px calc(var(--step) * 2) 12px;
+  background: var(--paper);
+  transition: transform var(--dur) var(--ease);
+}
+
+body.is-immersive .rail {
+  transform: translateY(101%);
+}
+
+.rail__track {
+  flex: 1;
+  height: 1px;
+  background: var(--paper-ink);
+  opacity: 0.25;
+}
+
+.rail__fill {
+  width: 0;
+  height: 100%;
+  background: var(--paper-ink);
+}
+
+.rail__folio {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-ink);
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}

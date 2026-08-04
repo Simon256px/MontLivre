@@ -1,0 +1,255 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Règle n°1 de l'affiche : pas un seul angle arrondi dans l'application. */
+  border-radius: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:where(a, button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 3px solid var(--bg);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background-image: var(--grain);
+  opacity: var(--grain-strength);
+  mix-blend-mode: var(--grain-blend);
+}
+
+/* Routage : trois vues, une seule montée à la fois. */
+.view {
+  display: none;
+  position: relative;
+  height: 100%;
+  overflow: auto;
+  padding: var(--gutter);
+  padding-left: calc(var(--gutter) + 30px);
+}
+body[data-view="library"] .view--library,
+body[data-view="settings"] .view--settings {
+  display: block;
+}
+body[data-view="reader"] .view--reader {
+  display: grid;
+}
+
+/* Étiquette verticale dans la gouttière, comme les colonnes tournées de
+   l'affiche. Purement décorative : masquée aux lecteurs d'écran. */
+.spine {
+  position: absolute;
+  left: calc(var(--gutter) - 4px);
+  top: var(--gutter);
+  writing-mode: vertical-rl;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+  user-select: none;
+}
+
+/* ---- En-tête d'écran ---- */
+
+.masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: calc(var(--step) * 3);
+  padding-bottom: calc(var(--step) * 2);
+  border-bottom: var(--rule-thick);
+  margin-bottom: calc(var(--step) * 4);
+}
+
+.masthead__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(46px, 9.5vw, 124px);
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.masthead__break {
+  display: block;
+}
+
+.masthead__side {
+  display: grid;
+  justify-items: end;
+  gap: calc(var(--step) * 1.5);
+}
+
+.masthead__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+}
+
+.masthead__meta {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.masthead--plain {
+  align-items: center;
+}
+
+/* ---- Contrôles ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--step);
+  height: 40px;
+  padding: 0 14px;
+  border: var(--rule);
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--drop-sm);
+}
+
+.btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.btn--solid {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.btn--icon {
+  width: 40px;
+  padding: 0;
+}
+
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--step);
+  height: 40px;
+  padding: 0 12px;
+  border: var(--rule);
+  background: transparent;
+}
+
+.field__icon {
+  color: var(--muted);
+}
+
+.field input {
+  width: 15ch;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.field input::placeholder {
+  color: var(--muted);
+}
+
+.field input:focus {
+  outline: none;
+}
+
+.field:focus-within {
+  box-shadow: var(--drop-sm);
+}
+
+.field input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+[data-icon],
+[data-shape] {
+  display: inline-flex;
+  flex: none;
+}
+
+[data-icon] svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 720px) {
+  .masthead {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .masthead__side {
+    justify-items: start;
+  }
+  .field input {
+    width: 9ch;
+  }
+}

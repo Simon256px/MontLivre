@@ -1,0 +1,103 @@
+/* Palette : relevée telle quelle sur la planche de couleurs de référence.
+   Ash sert aux filets et jamais au texte — 2,1:1 sur Cloud, c'est illisible. */
+:root {
+  --yolk: #ffa51e;
+  --ochre: #ff5500;
+  --violet: #7d00ff;
+  --moss: #00aa46;
+  --coal: #000000;
+  --ash: #a0a0a0;
+  --cloud: #e1e1e1;
+
+  --bg: var(--cloud);
+  --surface: #eceae4;
+  --ink: var(--coal);
+  --muted: #5c5c5c;
+  --line: var(--coal);
+
+  --paper: #f2f0ea;
+  --paper-ink: #16130f;
+
+  /* Un seul accent vivant à l'écran à la fois. */
+  --accent: var(--ochre);
+  --on-accent: var(--coal);
+
+  /* La grille : toute mesure est un multiple de --step. */
+  --step: 8px;
+  --gutter: clamp(20px, 3.5vw, 44px);
+
+  --rule: 1px solid var(--line);
+  --rule-thick: 2px solid var(--line);
+  /* Jamais de flou. L'ombre est un décalage plein, comme sur l'affiche. */
+  --drop: 6px 6px 0 var(--coal);
+  --drop-sm: 3px 3px 0 var(--coal);
+
+  --font-display: "Archivo", "Arial Black", "Segoe UI", Arial, sans-serif;
+  --font-ui: "Archivo", "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-read: "Literata", Georgia, "Iowan Old Style", "Times New Roman", serif;
+
+  --grain-blend: multiply;
+  --grain-strength: 0.4;
+
+  --dur: 140ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Le violet est le seul accent trop sombre pour du texte noir (3,3:1). */
+body[data-accent="yolk"] {
+  --accent: var(--yolk);
+  --on-accent: var(--coal);
+}
+body[data-accent="ochre"] {
+  --accent: var(--ochre);
+  --on-accent: var(--coal);
+}
+body[data-accent="moss"] {
+  --accent: var(--moss);
+  --on-accent: var(--coal);
+}
+body[data-accent="violet"] {
+  --accent: var(--violet);
+  --on-accent: #ffffff;
+}
+
+/* Les thèmes ne touchent que la page de lecture, sauf « nuit » qui doit aussi
+   éteindre le chrome — sinon on se prend l'affiche en pleine figure à 23 h. */
+body[data-theme="papier"] {
+  --paper: #f2f0ea;
+  --paper-ink: #16130f;
+}
+body[data-theme="lin"] {
+  --paper: #e8e0cf;
+  --paper-ink: #2a2115;
+}
+body[data-theme="contraste"] {
+  --paper: #ffffff;
+  --paper-ink: #000000;
+  --grain-strength: 0;
+}
+body[data-theme="nuit"] {
+  --bg: #121212;
+  --surface: #1c1c1c;
+  --ink: #ececec;
+  --muted: #9a9a9a;
+  --line: #ececec;
+  --paper: #141414;
+  --paper-ink: #d6d2c8;
+  --drop: 6px 6px 0 #000000;
+  --drop-sm: 3px 3px 0 #000000;
+  --grain-blend: screen;
+  --grain-strength: 0.12;
+}
+
+/* Grain papier : un feTurbulence en data-URI plutôt qu'un bitmap.
+   ~400 octets contre 200 Ko pour une texture scannée. */
+:root {
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23g)'/></svg>");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}

@@ -1,0 +1,178 @@
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: calc(var(--step) * 4) calc(var(--step) * 3);
+  padding-bottom: calc(var(--step) * 6);
+}
+
+.book {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.book__frame {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: var(--rule);
+  overflow: hidden;
+  background: var(--surface);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.book:hover .book__frame,
+.book:focus-visible .book__frame {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--drop);
+}
+
+.book:active .book__frame {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+.book__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Marqueur « en cours » : l'étincelle Y2K, en noir, jamais en couleur —
+   sinon elle entre en concurrence avec l'accent de la couverture. */
+.book__mark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--coal);
+}
+.book__mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.book__title {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.book__author {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.book__track {
+  height: 5px;
+  margin-top: 8px;
+  border: var(--rule);
+}
+
+.book__fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+/* ---- Couverture engendrée quand le livre n'en fournit pas ----
+   Aplat d'accent tiré du titre, titre débordant du cadre comme sur l'affiche. */
+
+.gen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: space-between;
+  padding: 9px;
+  background: var(--gen-bg);
+  color: var(--gen-ink);
+}
+
+.gen__title {
+  margin: 0;
+  margin-right: -22%;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 27px;
+  line-height: 0.84;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.gen__author {
+  justify-self: start;
+  writing-mode: vertical-rl;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.gen__shape {
+  position: absolute;
+  right: -14%;
+  bottom: -12%;
+  opacity: 0.5;
+}
+.gen__shape svg {
+  width: 96px;
+  height: 96px;
+}
+
+/* ---- Rien sur l'étagère ---- */
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--step);
+  padding: calc(var(--step) * 8) 0;
+  text-align: center;
+}
+
+.empty__shape {
+  color: var(--accent);
+}
+.empty__shape svg {
+  width: 128px;
+  height: 128px;
+}
+
+.empty__title {
+  margin: calc(var(--step) * 2) 0 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(28px, 5vw, 48px);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.empty__hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Glisser-déposer : un cadre franc, pas un pointillé timide. */
+.view--library.is-drop::after {
+  content: "";
+  position: absolute;
+  inset: calc(var(--step) * 1.5);
+  border: 4px solid var(--accent);
+  pointer-events: none;
+}
