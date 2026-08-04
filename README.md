@@ -60,8 +60,10 @@ de dépendances de Tauri. Les suivants sont incrémentaux.
 
 ## Lancer
 
+Depuis la racine du projet — le CLI trouve `src-tauri/tauri.conf.json` tout seul :
+
 ```bash
-cargo tauri dev --manifest-path src-tauri/Cargo.toml
+cargo tauri dev
 ```
 
 Pour regarder l'interface **sans** la chaîne Rust, un serveur statique de
@@ -74,7 +76,7 @@ powershell -ExecutionPolicy Bypass -File tools/serve.ps1
 ## Construire l'installeur
 
 ```bash
-cargo tauri build --manifest-path src-tauri/Cargo.toml
+cargo tauri build
 ```
 
 Le NSIS sort dans `src-tauri/target/release/bundle/nsis/`. Il déclare
