@@ -6,6 +6,10 @@
 }
 
 .book {
+  position: relative;
+}
+
+.book__open {
   display: block;
   width: 100%;
   padding: 0;
@@ -15,6 +19,39 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* Le retrait ne s'affiche qu'au survol : c'est une action rare et destructrice,
+   elle n'a pas à occuper la grille en permanence. */
+.book__del {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: var(--rule);
+  background: var(--bg);
+  color: var(--ink);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--dur) var(--ease);
+}
+.book__del svg {
+  width: 12px;
+  height: 12px;
+}
+
+.book:hover .book__del,
+.book__del:focus-visible {
+  opacity: 1;
+}
+
+.book__del:hover {
+  background: var(--ink);
+  color: var(--bg);
 }
 
 .book__frame {
@@ -28,13 +65,13 @@
     box-shadow var(--dur) var(--ease);
 }
 
-.book:hover .book__frame,
-.book:focus-visible .book__frame {
+.book__open:hover .book__frame,
+.book__open:focus-visible .book__frame {
   transform: translate(-3px, -3px);
   box-shadow: var(--drop);
 }
 
-.book:active .book__frame {
+.book__open:active .book__frame {
   transform: translate(1px, 1px);
   box-shadow: none;
 }
@@ -105,6 +142,7 @@
   margin-right: -22%;
   font-family: var(--font-display);
   font-weight: 900;
+  font-stretch: 88%;
   font-size: 27px;
   line-height: 0.84;
   letter-spacing: -0.035em;
@@ -155,6 +193,7 @@
   margin: calc(var(--step) * 2) 0 0;
   font-family: var(--font-display);
   font-weight: 900;
+  font-stretch: 90%;
   font-size: clamp(28px, 5vw, 48px);
   line-height: 0.9;
   letter-spacing: -0.03em;

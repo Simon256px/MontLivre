@@ -58,42 +58,14 @@ body.is-immersive .chrome {
   gap: 2px;
 }
 
+/* Simple boîte de positionnement : c'est foliate-js qui met en page, en
+   relisant les réglages via reader.js (applyLayout). */
 .page {
   position: absolute;
   inset: 0;
-  padding: calc(var(--step) * 8) var(--read-margin, 6vw) calc(var(--step) * 6);
-  overflow: auto;
-  font-family: var(--font-read);
-  font-size: var(--read-size, 18px);
-  line-height: var(--read-leading, 1.62);
   color: var(--paper-ink);
 }
 
-.page__body {
-  max-width: var(--read-measure, 62ch);
-  margin: 0 auto;
-  hyphens: auto;
-}
-
-.page__body p {
-  margin: 0;
-  text-indent: 1.4em;
-}
-.page__body p:first-of-type {
-  text-indent: 0;
-}
-
-.page__body h2 {
-  margin: 2.4em 0 1em;
-  font-family: var(--font-read);
-  font-size: 1.05em;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-indent: 0;
-}
-
-/* foliate-js remplace .page__body par son propre conteneur au jalon 3. */
 foliate-view {
   display: block;
   width: 100%;

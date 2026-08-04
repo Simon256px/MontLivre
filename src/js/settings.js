@@ -7,7 +7,7 @@ export const DEFAULTS = {
   size: 18,
   leading: 1.62,
   measure: 62,
-  margin: 6,
+  margin: 56,
 };
 
 const THEMES = [
@@ -43,7 +43,7 @@ export function applySettings(settings) {
   root.setProperty("--read-size", `${settings.size}px`);
   root.setProperty("--read-leading", String(settings.leading));
   root.setProperty("--read-measure", `${settings.measure}ch`);
-  root.setProperty("--read-margin", `${settings.margin}vw`);
+  root.setProperty("--read-margin", `${settings.margin}px`);
 }
 
 function row(label, hint, control) {
@@ -208,11 +208,11 @@ export function renderSettings(container, settings, onChange) {
         null,
         slider({
           label: "Marges",
-          min: 2,
-          max: 16,
-          step: 1,
+          min: 24,
+          max: 104,
+          step: 4,
           value: settings.margin,
-          format: (v) => `${v} %`,
+          format: (v) => `${v} px`,
           onInput: set("margin"),
         }),
       ),

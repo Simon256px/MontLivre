@@ -113,6 +113,8 @@ body[data-view="reader"] .view--reader {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 900;
+  /* L'axe de chasse d'Archivo : c'est ce qui donne la compacité de l'affiche. */
+  font-stretch: 90%;
   font-size: clamp(46px, 9.5vw, 124px);
   line-height: 0.82;
   letter-spacing: -0.045em;

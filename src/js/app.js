@@ -3,10 +3,20 @@ import { paint } from "./ui/shapes.js";
 import { filterBooks, renderShelf } from "./library.js";
 import { DEFAULTS, applySettings, renderSettings } from "./settings.js";
 import { createReader } from "./reader.js";
-import { FIXTURES } from "./fixtures.js";
+import { ingest } from "./import.js";
+import {
+  EXTENSIONS,
+  bookFile,
+  coverUrl,
+  deleteBook,
+  isNative,
+  loadLibrary,
+  pickFiles,
+  saveLibrary,
+} from "./store.js";
 
 const state = {
-  books: FIXTURES, // jalon 4 : remplacé par la lecture de library.json
+  books: [],
   settings: { ...DEFAULTS },
   query: "",
   lastView: "library",
@@ -17,6 +27,24 @@ const shelfNodes = {
   empty: qs("#empty"),
   count: qs("#library-count"),
 };
+
+/** Écrit au plus une fois par seconde : `relocate` part à chaque page tournée,
+ *  et on ne va pas réécrire tout le fichier à chaque fois. */
+let saveTimer = 0;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 1000);
+}
+
+async function persist() {
+  clearTimeout(saveTimer);
+  const books = state.books.map(({ coverUrl: _url, ...rest }) => rest);
+  try {
+    await saveLibrary({ version: 2, books, settings: state.settings });
+  } catch (error) {
+    console.error("Sauvegarde impossible", error);
+  }
+}
 
 const reader = createReader(
   {
@@ -29,8 +57,10 @@ const reader = createReader(
     folio: qs("#folio"),
   },
   {
-    onProgress: (book, fraction) => {
+    onProgress: (book, fraction, cfi) => {
       book.fraction = fraction;
+      if (cfi) book.cfi = cfi;
+      scheduleSave();
     },
   },
 );
@@ -42,12 +72,38 @@ function setView(name) {
   // Sans ça, revenir des réglages laisse le chrome épinglé : plus aucun compte
   // à rebours n'est armé tant que la souris n'a pas bougé sur la page.
   if (name === "reader") reader.wake();
+  if (name === "library") reader.close();
+}
+
+async function openBook(book) {
+  setView("reader");
+  try {
+    await reader.open(book, await bookFile(book));
+    book.opened = Date.now();
+    scheduleSave();
+  } catch (error) {
+    console.error(`Ouverture impossible : ${book.title}`, error);
+    window.alert(`Impossible d'ouvrir « ${book.title} ».\n${error.message ?? error}`);
+    setView("library");
+  }
+}
+
+async function removeBook(book) {
+  if (!window.confirm(`Retirer « ${book.title} » de la bibliothèque ?`)) return;
+  state.books = state.books.filter((item) => item.id !== book.id);
+  drawShelf();
+  try {
+    await deleteBook(book);
+  } catch (error) {
+    console.error(`Suppression du fichier impossible : ${book.title}`, error);
+  }
+  await persist();
 }
 
 function drawShelf() {
-  renderShelf(shelfNodes, filterBooks(state.books, state.query), (book) => {
-    setView("reader");
-    reader.open(book);
+  renderShelf(shelfNodes, filterBooks(state.books, state.query), {
+    onOpen: openBook,
+    onDelete: removeBook,
   });
   paint(shelfNodes.shelf);
 }
@@ -55,8 +111,81 @@ function drawShelf() {
 function drawSettings() {
   renderSettings(qs("#settings"), state.settings, (next) => {
     applySettings(next);
-    drawShelf(); // l'accent change la barre de progression des couvertures
+    reader.applyLayout();
+    drawShelf();
+    scheduleSave();
   });
+}
+
+async function addFiles(picked) {
+  const keep = picked.filter((item) => EXTENSIONS.includes(item.name.split(".").pop().toLowerCase()));
+  if (!keep.length) return;
+
+  for (const item of keep) {
+    try {
+      const entry = await ingest(item);
+      if (entry.hasCover) entry.coverUrl = await coverUrl(entry.id);
+      state.books.unshift(entry);
+      drawShelf();
+    } catch (error) {
+      console.error(`Import impossible : ${item.name}`, error);
+      window.alert(`Impossible d'importer « ${item.name} ».\n${error.message ?? error}`);
+    }
+  }
+  await persist();
+}
+
+/** Le glisser-déposer n'a rien de commun entre les deux mondes : Tauri le
+ *  remonte en événements natifs avec des chemins, le navigateur en DataTransfer. */
+function wireDrop() {
+  const view = qs("#view-library");
+  const mark = (on) => view.classList.toggle("is-drop", on);
+
+  if (isNative) {
+    const { listen } = globalThis.__TAURI__.event;
+    listen("tauri://drag-enter", () => mark(true));
+    listen("tauri://drag-leave", () => mark(false));
+    listen("tauri://drag-drop", (event) => {
+      mark(false);
+      const paths = event.payload?.paths ?? [];
+      addFiles(paths.map((path) => ({ name: path.split(/[\\/]/).pop(), path })));
+    });
+    return;
+  }
+
+  view.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    mark(true);
+  });
+  view.addEventListener("dragleave", () => mark(false));
+  view.addEventListener("drop", (event) => {
+    event.preventDefault();
+    mark(false);
+    addFiles([...event.dataTransfer.files].map((file) => ({ name: file.name, file })));
+  });
+}
+
+async function boot() {
+  const saved = await loadLibrary();
+  if (saved) {
+    state.books = saved.books ?? [];
+    state.settings = { ...DEFAULTS, ...(saved.settings ?? {}) };
+  }
+
+  applySettings(state.settings);
+  paint();
+  drawSettings();
+  drawShelf();
+  wireDrop();
+
+  // Les couvertures arrivent après coup : l'étagère est déjà lisible entre-temps.
+  const withCovers = state.books.filter((book) => book.hasCover);
+  await Promise.all(
+    withCovers.map(async (book) => {
+      book.coverUrl = await coverUrl(book.id);
+    }),
+  );
+  if (withCovers.length) drawShelf();
 }
 
 qs("#go-settings").addEventListener("click", () => setView("settings"));
@@ -69,9 +198,8 @@ qs("#search").addEventListener("input", (event) => {
   drawShelf();
 });
 
-qs("#add-book").addEventListener("click", () => {
-  // Jalon 4 : dialog.open() puis import via la commande Rust book_import.
-  console.info("Import de livre — branché au jalon 4.");
+qs("#add-book").addEventListener("click", async () => {
+  addFiles(await pickFiles());
 });
 
 document.addEventListener("keydown", (event) => {
@@ -80,7 +208,9 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-applySettings(state.settings);
-paint();
-drawSettings();
-drawShelf();
+// La position de lecture ne doit pas se perdre parce qu'on a fermé la fenêtre.
+window.addEventListener("beforeunload", () => {
+  if (saveTimer) persist();
+});
+
+boot();
