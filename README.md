@@ -1,6 +1,6 @@
 <h1 align="center">MontLivre</h1>
 
-<img width="128" height="128" alt="image-1785960610719" src="https://github.com/user-attachments/assets/379154bc-3812-4b86-8055-ea2b994e786b" />
+<img align="center" width="128" height="128" alt="image-1785960610719" src="https://github.com/user-attachments/assets/379154bc-3812-4b86-8055-ea2b994e786b" />
 
 <p align="center"><strong>Ranger, lire, régler. Rien d'autre.</strong></p>
 
