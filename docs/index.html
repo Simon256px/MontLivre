@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MontLivre — ranger, lire, régler</title>
+    <meta
+      name="description"
+      content="Un lecteur EPUB, MOBI, AZW3, FB2 et CBZ pour Windows. 3,5 Mo, hors ligne, sans compte."
+    />
+    <meta name="theme-color" content="#e1e1e1" />
+    <link rel="icon" href="icon.png" />
+
+    <meta property="og:title" content="MontLivre — ranger, lire, régler" />
+    <meta
+      property="og:description"
+      content="Un lecteur de livres numériques qui tient dans 3,5 Mo. Hors ligne, sans compte."
+    />
+    <meta property="og:image" content="icon.png" />
+    <meta property="og:type" content="website" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Literata:opsz,wght@7..72,200..700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Mêmes règles que l'application : angles droits, filets nets, ombres
+         pleines, un seul accent vif à l'écran. */
+      :root {
+        --coal: #000;
+        --ash: #a0a0a0;
+        --cloud: #e1e1e1;
+        --paper: #f2f0ea;
+        --yolk: #ffa51e;
+        --ochre: #ff5500;
+        --violet: #7d00ff;
+        --moss: #00aa46;
+        --accent: var(--ochre);
+        --muted: #5c5c5c;
+        --rule: 1px solid var(--coal);
+        --rule-thick: 2px solid var(--coal);
+        --drop: 8px 8px 0 var(--coal);
+        --gutter: clamp(20px, 5vw, 72px);
+        --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23g)'/></svg>");
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        border-radius: 0;
+      }
+
+      body {
+        margin: 0;
+        background: var(--cloud);
+        color: var(--coal);
+        font-family: "Archivo", "Segoe UI", Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      .grain {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        pointer-events: none;
+        background-image: var(--grain);
+        opacity: 0.4;
+        mix-blend-mode: multiply;
+      }
+
+      ::selection {
+        background: var(--accent);
+        color: var(--coal);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      main {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 var(--gutter);
+      }
+
+      /* ---- Bandeau ---- */
+
+      .hero {
+        padding: clamp(36px, 7vw, 90px) 0 0;
+      }
+
+      .hero__kicker {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 clamp(20px, 4vw, 44px);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .hero__kicker img {
+        width: 34px;
+        height: 34px;
+        display: block;
+      }
+
+      h1 {
+        margin: 0;
+        font-weight: 900;
+        font-stretch: 88%;
+        font-size: clamp(64px, 17vw, 250px);
+        line-height: 0.78;
+        letter-spacing: -0.05em;
+        text-transform: uppercase;
+      }
+
+      h1 span {
+        display: block;
+      }
+
+      .hero__lede {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: clamp(20px, 4vw, 60px);
+        align-items: end;
+        margin-top: clamp(20px, 3vw, 40px);
+        padding-top: 18px;
+        border-top: var(--rule-thick);
+      }
+
+      .hero__lede p {
+        margin: 0;
+        font-size: clamp(16px, 1.6vw, 21px);
+        max-width: 46ch;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        height: 54px;
+        padding: 0 22px;
+        border: var(--rule-thick);
+        background: var(--coal);
+        color: var(--cloud);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition:
+          transform 0.14s cubic-bezier(0.2, 0, 0, 1),
+          box-shadow 0.14s cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      .btn:hover {
+        transform: translate(-4px, -4px);
+        box-shadow: var(--drop);
+      }
+
+      .btn--ghost {
+        background: transparent;
+        color: var(--coal);
+      }
+
+      .btn svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      /* ---- Le chiffre ---- */
+
+      .weight {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        margin: clamp(52px, 9vw, 120px) 0 0;
+        border: var(--rule-thick);
+        background: var(--accent);
+      }
+
+      .weight > div {
+        padding: clamp(20px, 3vw, 34px);
+        border-left: var(--rule);
+      }
+
+      .weight > div:first-child {
+        border-left: 0;
+      }
+
+      .weight dt {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      .weight dd {
+        margin: 0;
+        font-weight: 900;
+        font-stretch: 88%;
+        font-size: clamp(38px, 5.2vw, 68px);
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+      }
+
+      .weight small {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        opacity: 0.72;
+      }
+
+      /* ---- Sections ---- */
+
+      section {
+        margin-top: clamp(60px, 10vw, 140px);
+      }
+
+      h2 {
+        margin: 0 0 clamp(24px, 3vw, 44px);
+        padding-bottom: 12px;
+        border-bottom: var(--rule-thick);
+        font-weight: 900;
+        font-stretch: 90%;
+        font-size: clamp(34px, 6vw, 82px);
+        line-height: 0.88;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: clamp(20px, 3vw, 40px);
+      }
+
+      .card {
+        padding-top: 14px;
+        border-top: var(--rule);
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .card p {
+        margin: 0;
+        font-size: 15px;
+        color: var(--muted);
+      }
+
+      .card__mark {
+        display: block;
+        width: 22px;
+        height: 22px;
+        margin-bottom: 12px;
+        color: var(--accent);
+      }
+
+      /* ---- Ce qu'il ne fait pas ---- */
+
+      .plain {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 0;
+        border: var(--rule);
+      }
+
+      .plain > div {
+        padding: clamp(18px, 2.4vw, 28px);
+        border-left: var(--rule);
+        border-top: var(--rule);
+      }
+
+      .plain > div:first-child {
+        border-top: 0;
+      }
+
+      .plain strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .plain p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ---- Extrait de lecture ---- */
+
+      .read {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        border: var(--rule-thick);
+        background: var(--paper);
+        box-shadow: var(--drop);
+      }
+
+      .read__bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 14px;
+        border-bottom: var(--rule);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .read__body {
+        padding: clamp(26px, 4vw, 56px);
+        font-family: "Literata", Georgia, serif;
+        font-size: clamp(15px, 1.3vw, 18px);
+        line-height: 1.62;
+        color: #16130f;
+      }
+
+      .read__body p {
+        margin: 0 0 1em;
+        max-width: 62ch;
+      }
+
+      .read__body p:last-child {
+        margin-bottom: 0;
+      }
+
+      .read__body mark {
+        background: var(--yolk);
+        color: inherit;
+      }
+
+      /* ---- Pied ---- */
+
+      footer {
+        margin-top: clamp(60px, 10vw, 140px);
+        padding: clamp(26px, 4vw, 48px) 0 clamp(40px, 6vw, 72px);
+        border-top: var(--rule-thick);
+      }
+
+      .footer__row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px 28px;
+        align-items: baseline;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .footer__row a {
+        text-decoration: none;
+      }
+
+      .footer__row a:hover {
+        color: var(--coal);
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+
+      @media (max-width: 720px) {
+        .hero__lede {
+          grid-template-columns: minmax(0, 1fr);
+          align-items: start;
+        }
+        .cta {
+          justify-content: flex-start;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .btn {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <main>
+      <header class="hero">
+        <p class="hero__kicker">
+          <img src="icon.png" alt="" />
+          MontLivre — Windows — MIT
+        </p>
+
+        <h1><span>Mont</span><span>Livre</span></h1>
+
+        <div class="hero__lede">
+          <p>
+            Un lecteur de livres numériques qui tient dans <strong>3,5 Mo</strong>. Il lit
+            EPUB, MOBI, AZW3, FB2 et CBZ, fonctionne hors ligne, ne demande pas de compte
+            et n'envoie rien nulle part.
+          </p>
+          <p class="cta">
+            <a class="btn" href="https://github.com/Simon256px/MontLivre/releases/latest">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true">
+                <path d="M12 3v13M6 11l6 6 6-6M4 21h16" />
+              </svg>
+              Télécharger
+            </a>
+            <a class="btn btn--ghost" href="https://github.com/Simon256px/MontLivre">
+              Code source
+            </a>
+          </p>
+        </div>
+
+        <dl class="weight">
+          <div>
+            <dt>Installeur</dt>
+            <dd>3,5 Mo</dd>
+            <small>La version Electron précédente en pesait 122.</small>
+          </div>
+          <div>
+            <dt>Mémoire au repos</dt>
+            <dd>25 Mo</dd>
+            <small>Il s'appuie sur le WebView2 déjà présent sur Windows.</small>
+          </div>
+          <div>
+            <dt>Lignes de code</dt>
+            <dd>2 530</dd>
+            <small>Contre 6 926 pour la version précédente.</small>
+          </div>
+        </dl>
+      </header>
+
+      <section>
+        <h2>Ce qu'il fait</h2>
+        <div class="grid">
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Cinq formats</h3>
+            <p>EPUB, MOBI, AZW3, FB2 et CBZ, plus les PDF en page fixe. Rendu par foliate-js, pas par un moteur maison.</p>
+          </article>
+
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Reprise exacte</h3>
+            <p>La position est enregistrée en CFI, pas en numéro de page : elle survit à un changement de taille de texte.</p>
+          </article>
+
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Annotations</h3>
+            <p>Surlignage en quatre couleurs, favoris, et un écran qui rassemble tous les passages de toute la bibliothèque.</p>
+          </article>
+
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Notes en infobulle</h3>
+            <p>Un appel de note s'ouvre au survol, sans quitter la page. Les appels EPUB 3 comme les simples exposants.</p>
+          </article>
+
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Une page ou deux</h3>
+            <p>Quatre thèmes, la police, le corps, l'interligne, la longueur de ligne et les marges. Tout se règle.</p>
+          </article>
+
+          <article class="card">
+            <svg class="card__mark" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 0C54.6 33.4 66.6 45.4 100 50 66.6 54.6 54.6 66.6 50 100 45.4 66.6 33.4 54.6 0 50 33.4 45.4 45.4 33.4 50 0Z" fill="currentColor" />
+            </svg>
+            <h3>Couvertures engendrées</h3>
+            <p>Un livre sans couverture reçoit une affiche : couleur et forme tirées de son titre, donc stables.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>La page</h2>
+        <div class="read">
+          <div class="read__bar">
+            <span>Le Horla — Guy de Maupassant</span>
+            <span>34 / 312</span>
+          </div>
+          <div class="read__body">
+            <p>
+              Quelle journée admirable ! J'ai passé toute la matinée étendu sur l'herbe,
+              devant ma maison, sous l'énorme platane qui la couvre, l'abrite et l'ombrage
+              tout entière.
+            </p>
+            <p>
+              <mark>J'aime ce pays, et j'aime y vivre parce que j'y ai mes racines</mark>,
+              ces profondes et délicates racines, qui attachent un homme à la terre où sont
+              nés et morts ses aïeux.
+            </p>
+            <p>
+              D'où viennent ces influences mystérieuses qui changent en découragement notre
+              bonheur et notre confiance en détresse&nbsp;?
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Ce qu'il ne fait pas</h2>
+        <div class="plain">
+          <div>
+            <strong>Aucun compte</strong>
+            <p>Rien à créer, rien à connecter. L'application ne connaît pas le réseau.</p>
+          </div>
+          <div>
+            <strong>Aucune télémétrie</strong>
+            <p>Vos livres et votre progression restent sur votre disque, et nulle part ailleurs.</p>
+          </div>
+          <div>
+            <strong>Pas de remise en page des PDF</strong>
+            <p>Les PDF sont rendus en pages fixes. C'est le prix de l'abandon du moteur maison.</p>
+          </div>
+          <div>
+            <strong>Pas encore de mise à jour intégrée</strong>
+            <p>Les versions se téléchargent à la main depuis les releases GitHub.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Comment c'est fait</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Tauri 2</h3>
+            <p>Une coque native de quelques mégaoctets, appuyée sur le WebView2 de Windows, au lieu d'un Chromium complet.</p>
+          </article>
+          <article class="card">
+            <h3>foliate-js</h3>
+            <p>Le moteur de lecture, éprouvé et sous licence MIT. Le projet n'entretient pas son propre moteur de mise en page.</p>
+          </article>
+          <article class="card">
+            <h3>Aucun bundler</h3>
+            <p>Ni npm, ni empaqueteur, ni étape de build côté interface : des modules ES natifs, servis tels quels.</p>
+          </article>
+          <article class="card">
+            <h3>Rien côté disque</h3>
+            <p>L'interface n'a aucune permission de fichiers : elle manipule des identifiants, que la couche Rust traduit en chemins.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <main>
+        <div class="footer__row">
+          <span>MontLivre — Simon Courtois — Licence MIT</span>
+          <span>
+            <a href="https://github.com/Simon256px/MontLivre">Dépôt</a> ·
+            <a href="https://github.com/Simon256px/MontLivre/releases">Versions</a> ·
+            <a href="https://github.com/Simon256px/MontLivre/blob/master/CHANGELOG.md">Journal</a> ·
+            <a href="https://github.com/johnfactotum/foliate-js">foliate-js</a>
+          </span>
+        </div>
+      </main>
+    </footer>
+  </body>
+</html>
