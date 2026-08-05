@@ -1,8 +1,22 @@
 import { clear, el } from "./ui/dom.js";
+import { icons } from "./ui/shapes.js";
 import { fontFaceRules } from "./ui/fonts.js";
 import "../vendor/foliate-js/view.js";
+import { FootnoteHandler } from "../vendor/foliate-js/footnotes.js";
+import { Overlayer } from "../vendor/foliate-js/overlayer.js";
+import { HIGHLIGHT_COLORS, colorHex } from "./annotations.js";
 
 const IDLE_MS = 2400;
+const HOVER_MS = 320;
+const HIDE_MS = 260;
+
+const NOTE_LABELS = {
+  footnote: "Note",
+  endnote: "Note",
+  note: "Note",
+  biblioentry: "Référence",
+  definition: "Définition",
+};
 
 /** Aplatit le sommaire en gardant la profondeur, pour l'indentation. */
 function flattenToc(items, depth = 0, out = []) {
@@ -27,6 +41,7 @@ function readTokens() {
     leading: parseFloat(get("--read-leading")) || 1.6,
     measure: parseFloat(get("--read-measure")) || 62,
     margin: parseFloat(get("--read-margin")) || 56,
+    spread: parseInt(get("--read-spread"), 10) || 1,
     dark: document.body.dataset.theme === "nuit",
   };
 }
@@ -39,7 +54,9 @@ function bookStyles(t) {
       font-size: ${t.size}px;
       hyphens: auto;
     }
-    html, body { color: ${t.ink}; background: none; }
+    /* !important : beaucoup d'EPUB convertis imposent un fond blanc, qui
+       rendait la page aveuglante sous le thème Nuit. */
+    html, body { color: ${t.ink} !important; background: ${t.paper} !important; }
     body {
       font-family: ${t.font};
       line-height: ${t.leading};
@@ -51,11 +68,264 @@ function bookStyles(t) {
   `;
 }
 
-export function createReader(nodes, { onProgress } = {}) {
+export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
   let view = null;
   let entry = null;
   let idleTimer = 0;
   let currentHref = null;
+
+  // ---- Notes de bas de page ----
+  //
+  // foliate fait le plus dur : reconnaître un appel de note (epub:type, rôles
+  // ARIA, ou simple exposant), aller chercher le fragment et le rendre dans une
+  // vue à part. Il nous reste à le poser au bon endroit de l'écran.
+
+  const sectionOfDoc = new WeakMap();
+  const footnotes = new FootnoteHandler();
+  let hoverTimer = 0;
+  let hideTimer = 0;
+  let noteAnchor = null;
+
+  /** Le livre est dans une iframe : ses coordonnées ne valent rien pour le
+   *  document parent. `frameElement` fait le pont — et il traverse la racine
+   *  fantôme fermée du paginateur, parce qu'on le lit de l'intérieur. */
+  function anchorRect(doc, element) {
+    const frameRect = doc.defaultView?.frameElement?.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
+    const dx = frameRect?.left ?? 0;
+    const dy = frameRect?.top ?? 0;
+    return {
+      left: rect.left + dx,
+      right: rect.right + dx,
+      top: rect.top + dy,
+      bottom: rect.bottom + dy,
+    };
+  }
+
+  /** Pose un élément flottant contre un rectangle, sans jamais sortir de
+   *  l'écran. Sert à l'infobulle de note, à la palette et au menu. */
+  function place(node, rect) {
+    const box = node.getBoundingClientRect();
+    const margin = 12;
+
+    let left = (rect.left + rect.right) / 2 - box.width / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin));
+
+    // Au-dessus de la cible si la place existe, en dessous sinon.
+    let top = rect.top - box.height - 10;
+    if (top < margin) top = rect.bottom + 10;
+    top = Math.max(margin, Math.min(top, window.innerHeight - box.height - margin));
+
+    node.style.left = `${Math.round(left)}px`;
+    node.style.top = `${Math.round(top)}px`;
+  }
+
+  const placeNote = (rect) => place(nodes.note, rect);
+
+  function hideNote() {
+    clearTimeout(hideTimer);
+    clearTimeout(hoverTimer);
+    nodes.note.hidden = true;
+    nodes.note.style.opacity = "";
+    clear(nodes.noteBody);
+    noteAnchor = null;
+  }
+
+  function scheduleHide() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideNote, HIDE_MS);
+  }
+
+  /** La vue de la note doit être dans le document AVANT que foliate n'essaie de
+   *  la rendre : hors du DOM elle n'a pas de mise en page, son `load` ne part
+   *  jamais, et `render` n'arrive donc jamais non plus. On l'attache ici, à
+   *  l'aveugle, et on ne la dévoile qu'une fois le contenu posé. */
+  footnotes.addEventListener("before-render", ({ detail }) => {
+    const renderer = detail.view.renderer;
+    renderer?.setStyles?.(bookStyles(readTokens()));
+    // Une note se parcourt d'un trait, elle ne se pagine pas.
+    renderer?.setAttribute("flow", "scrolled");
+    renderer?.setAttribute("gap", "4%");
+    renderer?.setAttribute("margin", "14px");
+
+    clear(nodes.noteBody).append(detail.view);
+    nodes.note.style.opacity = "0";
+    nodes.note.hidden = false;
+    if (noteAnchor) placeNote(noteAnchor);
+  });
+
+  footnotes.addEventListener("render", ({ detail }) => {
+    nodes.noteLabel.textContent = NOTE_LABELS[detail.type] ?? "Note";
+    nodes.note.style.opacity = "1";
+    if (noteAnchor) placeNote(noteAnchor);
+  });
+
+  async function openFootnote(doc, link) {
+    if (!view?.book) return;
+    const raw = link.getAttribute("href");
+    if (!raw) return;
+
+    const section = view.book.sections?.[sectionOfDoc.get(doc)];
+    const href = section?.resolveHref?.(raw) ?? raw;
+    if (view.book.isExternal?.(href)) return;
+
+    noteAnchor = anchorRect(doc, link);
+    try {
+      // `handle` n'attend de l'événement que `detail` et `preventDefault` : on
+      // peut donc lui en fabriquer un depuis un survol aussi bien qu'un clic.
+      await footnotes.handle(view.book, { detail: { a: link, href }, preventDefault() {} });
+    } catch (error) {
+      console.warn("Note illisible", error);
+      hideNote();
+    }
+  }
+
+  // ---- Annotations ----
+  //
+  // foliate garde la surbrillance en mémoire seulement : chaque fois qu'une
+  // section est (re)chargée, il faut lui redonner ses annotations. D'où le
+  // `create-overlay` plus bas.
+
+  let annotations = [];
+  let pendingSelection = null;
+
+  function closeFloats() {
+    nodes.picker.hidden = true;
+    nodes.menu.hidden = true;
+    pendingSelection = null;
+  }
+
+  function buildPicker() {
+    clear(nodes.picker);
+    for (const color of HIGHLIGHT_COLORS) {
+      nodes.picker.append(
+        el("button", {
+          type: "button",
+          title: color.label,
+          "aria-label": `Surligner en ${color.label}`,
+          style: { background: color.hex },
+          onClick: () => createAnnotation(color.id),
+        }),
+      );
+    }
+  }
+
+  function onSelectionSettled(doc) {
+    const selection = doc.defaultView?.getSelection?.();
+    const text = selection?.isCollapsed === false ? selection.toString().trim() : "";
+    if (!text) {
+      if (nodes.menu.hidden) nodes.picker.hidden = true;
+      return;
+    }
+
+    pendingSelection = { doc, range: selection.getRangeAt(0), text };
+    nodes.menu.hidden = true;
+    nodes.picker.hidden = false;
+    place(nodes.picker, anchorRect(doc, pendingSelection.range));
+  }
+
+  /** Le lecteur ne dresse plus de liste : il tient la surbrillance et prévient.
+   *  C'est l'écran Annotations qui affiche, met en favori et supprime. */
+  function commitAnnotations() {
+    if (entry) onAnnotationsChange?.(entry, annotations);
+  }
+
+  async function createAnnotation(colorId) {
+    if (!pendingSelection || !view) return;
+    const { doc, range, text } = pendingSelection;
+    const cfi = view.getCFI(sectionOfDoc.get(doc), range);
+    if (!cfi) return;
+
+    // L'overlayer de foliate est indexé par CFI : deux annotations sur le même
+    // passage ne peuvent pas coexister, et les confondre reviendrait à en
+    // supprimer une en croyant toucher l'autre. Re-surligner change la couleur.
+    const existing = annotations.find((other) => other.cfi === cfi);
+    if (existing) {
+      doc.defaultView?.getSelection?.()?.removeAllRanges();
+      closeFloats();
+      await recolor(existing, colorId);
+      return;
+    }
+
+    const item = {
+      id: crypto.randomUUID(),
+      cfi,
+      color: colorId,
+      text: text.replace(/\s+/g, " ").slice(0, 400),
+      label: "",
+      favorite: false,
+      created: Date.now(),
+    };
+    annotations.push(item);
+
+    const placed = await view.addAnnotation({ value: cfi });
+    item.label = placed?.label ?? "";
+
+    doc.defaultView?.getSelection?.()?.removeAllRanges();
+    closeFloats();
+    commitAnnotations();
+  }
+
+  function openMenu(item, rect) {
+    const row = (name, label, action) =>
+      el(
+        "button",
+        { class: "menu__item", type: "button", role: "menuitem", onClick: action },
+        el("span", { html: icons[name]() }),
+        label,
+      );
+
+    const colors = el("div", { class: "menu__colors" });
+    for (const color of HIGHLIGHT_COLORS) {
+      colors.append(
+        el("button", {
+          type: "button",
+          title: color.label,
+          "aria-label": `Passer en ${color.label}`,
+          style: { background: color.hex },
+          onClick: () => recolor(item, color.id),
+        }),
+      );
+    }
+
+    clear(nodes.menu).append(
+      colors,
+      row("copy", "Copier", () => copyAnnotation(item)),
+      row(item.favorite ? "star-full" : "star", item.favorite ? "Retirer des favoris" : "Favoris", () =>
+        toggleFavorite(item),
+      ),
+      row("trash", "Supprimer", () => removeAnnotation(item)),
+    );
+
+    nodes.picker.hidden = true;
+    nodes.menu.hidden = false;
+    place(nodes.menu, rect);
+  }
+
+  async function recolor(item, colorId) {
+    item.color = colorId;
+    await view?.addAnnotation({ value: item.cfi }); // redessine avec la nouvelle teinte
+    closeFloats();
+    commitAnnotations();
+  }
+
+  function copyAnnotation(item) {
+    navigator.clipboard?.writeText(item.text).catch((error) => console.warn("Copie refusée", error));
+    closeFloats();
+  }
+
+  function toggleFavorite(item) {
+    item.favorite = !item.favorite;
+    closeFloats();
+    commitAnnotations();
+  }
+
+  async function removeAnnotation(item) {
+    annotations = annotations.filter((other) => other.id !== item.id);
+    await view?.deleteAnnotation({ value: item.cfi });
+    closeFloats();
+    commitAnnotations();
+  }
 
   function setImmersive(on) {
     document.body.classList.toggle("is-immersive", on && nodes.toc.hidden);
@@ -75,8 +345,12 @@ export function createReader(nodes, { onProgress } = {}) {
     view.renderer.setStyles?.(bookStyles(t));
     view.renderer.setAttribute("margin", `${Math.round(t.margin)}px`);
     view.renderer.setAttribute("gap", "7%");
+
+    // L'ordre compte : `max-column-count` ne fait que poser une variable CSS,
+    // c'est `max-inline-size` qui redessine. Posé après, le nombre de colonnes
+    // n'était jamais pris en compte et le livre restait sur deux pages.
+    view.renderer.setAttribute("max-column-count", String(t.spread));
     view.renderer.setAttribute("max-inline-size", `${Math.round(t.measure * t.size * 0.5)}px`);
-    view.renderer.setAttribute("max-column-count", "1");
   }
 
   function renderToc(toc) {
@@ -119,8 +393,11 @@ export function createReader(nodes, { onProgress } = {}) {
   function toggleToc(open = nodes.toc.hidden) {
     nodes.toc.hidden = !open;
     nodes.tocToggle.setAttribute("aria-expanded", String(open));
-    if (open) setImmersive(false);
-    else wake();
+    if (open) {
+      setImmersive(false);
+    } else {
+      wake();
+    }
   }
 
   /** Tant que le paginateur n'a pas mesuré ses colonnes, il renvoie des NaN.
@@ -139,6 +416,8 @@ export function createReader(nodes, { onProgress } = {}) {
       nodes.folio.textContent = `${Math.round(fraction * 100)} %`;
     }
 
+    // Une page tournée sous une note ouverte laisserait l'infobulle orpheline.
+    hideNote();
     markTocItem(detail.tocItem?.href ?? null);
 
     // Le CFI, lui, est toujours exploitable : c'est lui qui fait la reprise.
@@ -148,6 +427,9 @@ export function createReader(nodes, { onProgress } = {}) {
   }
 
   function close() {
+    hideNote();
+    closeFloats();
+    annotations = [];
     view?.close();
     view?.remove();
     view = null;
@@ -162,12 +444,45 @@ export function createReader(nodes, { onProgress } = {}) {
   async function open(book, file) {
     close();
     entry = book;
+    annotations = Array.isArray(book.annotations) ? book.annotations : [];
     nodes.title.textContent = book.title;
     toggleToc(false);
 
     view = document.createElement("foliate-view");
     view.addEventListener("relocate", onRelocate);
-    view.addEventListener("load", (event) => bindBookDocument(event.detail.doc));
+    view.addEventListener("load", (event) => {
+      sectionOfDoc.set(event.detail.doc, event.detail.index);
+      bindBookDocument(event.detail.doc);
+    });
+    view.addEventListener("draw-annotation", ({ detail }) => {
+      const item = annotations.find((other) => other.cfi === detail.annotation.value);
+      detail.draw(Overlayer.highlight, { color: colorHex(item?.color) });
+    });
+
+    // Une section rechargée revient nue : on lui rend ses surbrillances.
+    view.addEventListener("create-overlay", () => {
+      for (const item of annotations) view.addAnnotation({ value: item.cfi });
+    });
+
+    view.addEventListener("show-annotation", ({ detail }) => {
+      const item = annotations.find((other) => other.cfi === detail.value);
+      const doc = detail.range?.startContainer?.ownerDocument;
+      if (!item || !doc) return;
+      openMenu(item, anchorRect(doc, detail.range));
+    });
+
+    // Un clic sur un appel de note ouvre la même infobulle, sans naviguer.
+    view.addEventListener("link", (event) => {
+      const link = event.detail.a;
+      const doc = link?.ownerDocument;
+      if (!doc) return;
+      clearTimeout(hoverTimer);
+      noteAnchor = anchorRect(doc, link);
+      footnotes.handle(view.book, event)?.catch?.((error) => {
+        console.warn("Note illisible", error);
+        hideNote();
+      });
+    });
     nodes.page.replaceChildren(view);
 
     await view.open(file);
@@ -213,7 +528,9 @@ export function createReader(nodes, { onProgress } = {}) {
         turn(event.shiftKey ? -1 : 1);
         break;
       case "Escape":
-        if (!nodes.toc.hidden) toggleToc(false);
+        if (!nodes.menu.hidden || !nodes.picker.hidden) closeFloats();
+        else if (!nodes.note.hidden) hideNote();
+        else if (!nodes.toc.hidden) toggleToc(false);
         else wake();
         break;
       default:
@@ -237,7 +554,13 @@ export function createReader(nodes, { onProgress } = {}) {
   /** Clic sur les bords pour tourner, comme sur une liseuse. Les liens et les
    *  sélections en cours gardent la priorité. */
   function onClick(event) {
+    // Un premier clic ne sert qu'à refermer ce qui flotte.
+    if (!nodes.menu.hidden || !nodes.picker.hidden) {
+      closeFloats();
+      return;
+    }
     if (event.target?.closest?.("a[href]")) return;
+
     const win = event.view ?? window;
     if (!win.getSelection?.()?.isCollapsed) return;
 
@@ -249,9 +572,18 @@ export function createReader(nodes, { onProgress } = {}) {
       return;
     }
 
-    if (event.clientX < width * 0.22) turn(-1);
-    else if (event.clientX > width * 0.78) turn(1);
-    else wake();
+    const direction = event.clientX < width * 0.22 ? -1 : event.clientX > width * 0.78 ? 1 : 0;
+    if (!direction) {
+      wake();
+      return;
+    }
+
+    // Le même clic peut avoir touché une annotation : foliate teste la
+    // collision de son côté. On lui laisse un tour de boucle pour ouvrir son
+    // menu, faute de quoi on tourne la page.
+    setTimeout(() => {
+      if (nodes.menu.hidden) turn(direction);
+    }, 0);
   }
 
   /** Le livre vit dans une iframe, et les événements n'en sortent pas : ni
@@ -263,6 +595,23 @@ export function createReader(nodes, { onProgress } = {}) {
     doc.addEventListener("wheel", onWheel, { passive: true });
     doc.addEventListener("click", onClick);
     doc.addEventListener("pointermove", wake);
+
+    doc.addEventListener("mouseover", (event) => {
+      const link = event.target?.closest?.("a[href]");
+      if (!link) return;
+      clearTimeout(hoverTimer);
+      clearTimeout(hideTimer);
+      hoverTimer = setTimeout(() => openFootnote(doc, link), HOVER_MS);
+    });
+
+    doc.addEventListener("mouseout", (event) => {
+      if (!event.target?.closest?.("a[href]")) return;
+      clearTimeout(hoverTimer);
+      scheduleHide();
+    });
+
+    // Un tour de boucle : la sélection n'est arrêtée qu'après le mouseup.
+    doc.addEventListener("mouseup", () => setTimeout(() => onSelectionSettled(doc), 0));
   }
 
   nodes.page.addEventListener("pointermove", wake);
@@ -270,6 +619,37 @@ export function createReader(nodes, { onProgress } = {}) {
   nodes.page.addEventListener("click", onClick);
   nodes.tocToggle.addEventListener("click", () => toggleToc());
   document.addEventListener("keydown", onKey);
+  buildPicker();
 
-  return { open, close, toggleToc, wake, turn, applyLayout };
+  // On peut aller lire la note à la souris sans qu'elle se dérobe.
+  nodes.note.addEventListener("mouseenter", () => clearTimeout(hideTimer));
+  nodes.note.addEventListener("mouseleave", scheduleHide);
+  nodes.noteClose.addEventListener("click", hideNote);
+
+  /** Appelé depuis l'écran Annotations : ramène au passage surligné. */
+  function showAnnotation(item) {
+    view?.showAnnotation({ value: item.cfi }).catch((error) =>
+      console.warn("Passage introuvable", error),
+    );
+  }
+
+  /** Supprimée depuis l'écran Annotations : si le livre est ouvert, il faut
+   *  aussi retirer la surbrillance et notre copie de la liste. */
+  function forgetAnnotation(book, item) {
+    if (entry?.id !== book.id) return;
+    annotations = annotations.filter((other) => other.id !== item.id);
+    view?.deleteAnnotation({ value: item.cfi });
+  }
+
+  return {
+    open,
+    close,
+    toggleToc,
+    wake,
+    turn,
+    applyLayout,
+    hideNote,
+    showAnnotation,
+    forgetAnnotation,
+  };
 }

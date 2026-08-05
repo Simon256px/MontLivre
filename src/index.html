@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/library.css" />
     <link rel="stylesheet" href="css/reader.css" />
+    <link rel="stylesheet" href="css/notes.css" />
     <link rel="stylesheet" href="css/settings.css" />
   </head>
   <body data-view="library" data-accent="ochre" data-theme="papier">
@@ -16,7 +17,7 @@
 
     <!-- Bibliothèque -->
     <main class="view view--library" id="view-library">
-      <span class="spine" aria-hidden="true">MontLivre — 2.0.0</span>
+      <span class="spine" aria-hidden="true">MontLivre — 2.2.0</span>
 
       <header class="masthead">
         <h1 class="masthead__title">Biblio<span class="masthead__break">thèque</span></h1>
@@ -29,6 +30,9 @@
             </label>
             <button class="btn btn--solid" id="add-book" type="button">
               <span data-icon="plus" aria-hidden="true"></span>Ajouter
+            </button>
+            <button class="btn" id="go-notes" type="button">
+              <span data-icon="notes" aria-hidden="true"></span>Annotations
             </button>
             <button class="btn btn--icon" id="go-settings" type="button" aria-label="Réglages">
               <span data-icon="sliders" aria-hidden="true"></span>
@@ -71,10 +75,42 @@
 
       <div class="page" id="page"></div>
 
+      <div class="picker" id="picker" hidden role="group" aria-label="Surligner la sélection"></div>
+      <div class="menu" id="menu" hidden role="menu" aria-label="Actions sur l'annotation"></div>
+
+      <aside class="note" id="note" hidden aria-live="polite">
+        <div class="note__head">
+          <span class="note__label" id="note-label">Note</span>
+          <button class="note__close" id="note-close" type="button" aria-label="Fermer la note">
+            <span data-icon="close" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="note__body" id="note-body"></div>
+      </aside>
+
       <footer class="rail">
         <div class="rail__track"><div class="rail__fill" id="rail-fill"></div></div>
         <p class="rail__folio" id="folio"></p>
       </footer>
+    </main>
+
+    <!-- Annotations -->
+    <main class="view view--notes" id="view-notes">
+      <span class="spine" aria-hidden="true">Annotations</span>
+
+      <header class="masthead">
+        <h1 class="masthead__title">Anno<span class="masthead__break">tations</span></h1>
+        <div class="masthead__side">
+          <div class="masthead__actions">
+            <button class="btn btn--icon" id="close-notes" type="button" aria-label="Retour à la bibliothèque">
+              <span data-icon="close" aria-hidden="true"></span>
+            </button>
+          </div>
+          <p class="masthead__meta" id="notes-count"></p>
+        </div>
+      </header>
+
+      <div class="jots" id="notes-list"></div>
     </main>
 
     <!-- Réglages -->

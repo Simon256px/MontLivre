@@ -5,6 +5,14 @@
   padding-bottom: calc(var(--step) * 6);
 }
 
+/* `hidden` ne pose qu'un `display: none` de feuille utilisateur : une règle
+   d'auteur de même spécificité, écrite après, le neutralise sans bruit.
+   C'est ce qui affichait « Rien sur l'étagère » par-dessus une étagère pleine. */
+.shelf[hidden],
+.empty[hidden] {
+  display: none;
+}
+
 .book {
   position: relative;
 }

@@ -8,6 +8,7 @@ export const DEFAULTS = {
   leading: 1.62,
   measure: 62,
   margin: 56,
+  spread: 1,
 };
 
 const THEMES = [
@@ -44,6 +45,7 @@ export function applySettings(settings) {
   root.setProperty("--read-leading", String(settings.leading));
   root.setProperty("--read-measure", `${settings.measure}ch`);
   root.setProperty("--read-margin", `${settings.margin}px`);
+  root.setProperty("--read-spread", String(settings.spread));
 }
 
 function row(label, hint, control) {
@@ -163,6 +165,18 @@ export function renderSettings(container, settings, onChange) {
     ),
     group(
       "Lecture",
+      row(
+        "Pages",
+        "Une seule page, ou deux comme un livre ouvert.",
+        segmented(
+          [
+            { id: 1, label: "Une" },
+            { id: 2, label: "Deux" },
+          ],
+          settings.spread,
+          set("spread"),
+        ),
+      ),
       row("Police", null, segmented(FONTS, settings.font, set("font"))),
       row(
         "Taille",

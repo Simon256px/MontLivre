@@ -1,5 +1,37 @@
 # Journal des versions
 
+## 2.2.0
+
+### Corrigé
+
+- **« Rien sur l'étagère » s'affichait par-dessus une étagère pleine.**
+  L'attribut `hidden` ne pose qu'un `display: none` de feuille utilisateur ; la
+  règle `display: grid` de l'écran vide, de même spécificité et écrite après, le
+  neutralisait sans bruit.
+- **Le livre restait sur deux pages** quel que soit le réglage. Dans foliate,
+  `max-column-count` ne fait que poser une variable CSS — c'est `max-inline-size`
+  qui redessine. Le nombre de colonnes était appliqué après le rendu, donc
+  jamais pris en compte.
+- **Fond blanc en plein thème Nuit.** Beaucoup d'EPUB convertis imposent un fond
+  blanc à `body` ; la page est désormais forcée à la couleur du papier choisi.
+
+### Ajouté
+
+- **Réglage 1 ou 2 pages** : une seule page, ou deux comme un livre ouvert.
+- **Notes de bas de page en infobulle**, au survol comme au clic. Reconnaît les
+  appels déclarés en EPUB 3 et les simples exposants.
+- **Surlignage** : sélectionner un passage fait apparaître une palette des
+  quatre accents. La surbrillance se clique pour changer de couleur, copier,
+  mettre en favori ou supprimer.
+- **Écran Annotations**, atteint depuis la bibliothèque. Une case par passage,
+  toutes bibliothèques confondues, favoris en tête ; un clic rouvre le livre au
+  bon endroit.
+
+### À savoir
+
+Surligner deux fois le même passage n'en crée pas deux : foliate n'indexe ses
+surbrillances que par CFI. Re-surligner change la couleur.
+
 ## 2.0.1
 
 Le socle de la 2.0.0, débarrassé des deux défauts qui le rendaient inutilisable.

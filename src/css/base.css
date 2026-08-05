@@ -75,6 +75,7 @@ body {
   padding-left: calc(var(--gutter) + 30px);
 }
 body[data-view="library"] .view--library,
+body[data-view="notes"] .view--notes,
 body[data-view="settings"] .view--settings {
   display: block;
 }

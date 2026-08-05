@@ -1,0 +1,123 @@
+/* L'écran Annotations : une case par passage surligné, toutes bibliothèques
+   confondues, favoris en tête. Même grammaire que l'étagère — filet net,
+   ombre pleine au survol, angles droits. */
+
+.jots {
+  display: grid;
+  gap: calc(var(--step) * 2);
+  max-width: 940px;
+  padding-bottom: calc(var(--step) * 8);
+}
+
+.jot {
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1fr) auto;
+  align-items: stretch;
+  border: var(--rule);
+  background: var(--surface);
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.jot:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--drop);
+}
+
+/* Un favori se repère au filet épais, pas à une couleur de plus : l'accent de
+   la case appartient déjà au surlignage. */
+.jot[data-favorite="true"] {
+  border-width: 2px;
+}
+
+.jot__flag {
+  background: var(--jot-color, var(--accent));
+}
+
+.jot__open {
+  min-width: 0;
+  padding: calc(var(--step) * 2);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.jot__text {
+  margin: 0;
+  font-family: var(--font-read);
+  font-size: 15px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.jot__meta {
+  margin: calc(var(--step) * 1.5) 0 0;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.jot__actions {
+  display: flex;
+  flex-direction: column;
+  border-left: var(--rule);
+}
+
+.jot__action {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  width: 46px;
+  padding: 0;
+  border: 0;
+  border-top: var(--rule);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.jot__action:first-child {
+  border-top: 0;
+}
+
+.jot__action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.jot__action:hover {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* L'étoile pleine d'un favori se voit sans survol. */
+.jot[data-favorite="true"] .jot__action:first-child {
+  color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .jot {
+    grid-template-columns: 5px minmax(0, 1fr);
+  }
+  .jot__actions {
+    grid-column: 2;
+    flex-direction: row;
+    border-left: 0;
+    border-top: var(--rule);
+  }
+  .jot__action {
+    border-top: 0;
+    border-left: var(--rule);
+  }
+  .jot__action:first-child {
+    border-left: 0;
+  }
+}

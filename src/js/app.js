@@ -3,6 +3,7 @@ import { paint } from "./ui/shapes.js";
 import { filterBooks, renderShelf } from "./library.js";
 import { DEFAULTS, applySettings, renderSettings } from "./settings.js";
 import { createReader } from "./reader.js";
+import { annotationCount, renderAnnotations } from "./annotations.js";
 import { ingest } from "./import.js";
 import {
   EXTENSIONS,
@@ -58,11 +59,22 @@ const reader = createReader(
     title: qs("#running-title"),
     fill: qs("#rail-fill"),
     folio: qs("#folio"),
+    note: qs("#note"),
+    noteBody: qs("#note-body"),
+    noteLabel: qs("#note-label"),
+    noteClose: qs("#note-close"),
+    picker: qs("#picker"),
+    menu: qs("#menu"),
   },
   {
     onProgress: (book, fraction, cfi) => {
       book.fraction = fraction;
       if (cfi) book.cfi = cfi;
+      scheduleSave();
+    },
+    onAnnotationsChange: (book, annotations) => {
+      book.annotations = annotations;
+      drawAnnotations();
       scheduleSave();
     },
   },
@@ -109,6 +121,30 @@ function drawShelf() {
     onDelete: removeBook,
   });
   paint(shelfNodes.shelf);
+}
+
+/** L'écran Annotations rassemble tous les livres : on y arrive depuis la
+ *  bibliothèque, et un clic sur une case rouvre le livre au bon passage. */
+function drawAnnotations() {
+  qs("#notes-count").textContent = annotationCount(state.books);
+  renderAnnotations(qs("#notes-list"), state.books, {
+    onOpen: async (book, item) => {
+      await openBook(book);
+      reader.showAnnotation(item);
+    },
+    onToggleFavorite: (book, item) => {
+      item.favorite = !item.favorite;
+      drawAnnotations();
+      scheduleSave();
+    },
+    onDelete: (book, item) => {
+      book.annotations = (book.annotations ?? []).filter((other) => other.id !== item.id);
+      reader.forgetAnnotation(book, item);
+      drawAnnotations();
+      scheduleSave();
+    },
+  });
+  paint(qs("#notes-list"));
 }
 
 function drawSettings() {
@@ -189,6 +225,7 @@ async function boot() {
   paint();
   drawSettings();
   drawShelf();
+  drawAnnotations();
   wireDrop();
 
   // Les couvertures arrivent après coup : l'étagère est déjà lisible entre-temps.
@@ -205,6 +242,11 @@ async function boot() {
   if (requested) await openFromPath(requested);
 }
 
+qs("#go-notes").addEventListener("click", () => {
+  drawAnnotations();
+  setView("notes");
+});
+qs("#close-notes").addEventListener("click", () => setView("library"));
 qs("#go-settings").addEventListener("click", () => setView("settings"));
 qs("#reader-settings").addEventListener("click", () => setView("settings"));
 qs("#close-settings").addEventListener("click", () => setView(state.lastView));
@@ -220,9 +262,10 @@ qs("#add-book").addEventListener("click", async () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && document.body.dataset.view === "settings") {
-    setView(state.lastView);
-  }
+  if (event.key !== "Escape") return;
+  const view = document.body.dataset.view;
+  if (view === "settings") setView(state.lastView);
+  else if (view === "notes") setView("library");
 });
 
 // La position de lecture ne doit pas se perdre parce qu'on a fermé la fenêtre.
