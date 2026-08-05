@@ -58,6 +58,10 @@ const reader = createReader(
     title: qs("#running-title"),
     fill: qs("#rail-fill"),
     folio: qs("#folio"),
+    note: qs("#note"),
+    noteBody: qs("#note-body"),
+    noteLabel: qs("#note-label"),
+    noteClose: qs("#note-close"),
   },
   {
     onProgress: (book, fraction, cfi) => {
