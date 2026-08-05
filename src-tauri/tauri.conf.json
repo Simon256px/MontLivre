@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MontLivre",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "identifier": "com.simoncrts.montlivre",
   "build": {
     "frontendDist": "../src"
@@ -21,12 +21,22 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; media-src 'self' data: blob:; frame-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost data: blob:"
+      "csp": "default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; media-src 'self' data: blob:; frame-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost data: blob: https://github.com https://objects.githubusercontent.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk3N0NCNzk2N0RDOTE4QkQKUldTOUdNbDlscmQ4bDdid21uMW5EZlh0MkMvemhnU0dSb3JURk1JdElkR3JKbFdJN1dwRjJoTVkK",
+      "endpoints": [
+        "https://github.com/Simon256px/MontLivre/releases/latest/download/latest.json"
+      ],
+      "windows": { "installMode": "passive" }
     }
   },
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
     "fileAssociations": [
       { "ext": ["epub"], "name": "Livre EPUB", "description": "Livre EPUB", "role": "Viewer" },

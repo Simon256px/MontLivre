@@ -13,6 +13,48 @@
   display: none;
 }
 
+/* ---- Bandeau de mise à jour ---- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--step);
+  margin-bottom: calc(var(--step) * 4);
+  padding: 10px 10px 10px 16px;
+  border: var(--rule-thick);
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--drop-sm);
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.banner .btn {
+  border-color: var(--on-accent);
+  color: var(--on-accent);
+}
+
+.banner .btn--solid {
+  background: var(--on-accent);
+  color: var(--accent);
+}
+
+.banner .btn:hover {
+  box-shadow: 3px 3px 0 var(--on-accent);
+}
+
 .book {
   position: relative;
 }

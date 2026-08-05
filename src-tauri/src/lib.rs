@@ -54,6 +54,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(PendingOpen::default())
         .setup(|app| {
+            #[cfg(desktop)]
+            {
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_process::init())?;
+            }
+
             let args: Vec<String> = std::env::args().collect();
             if let Some(path) = book_argument(&args) {
                 if let Ok(mut pending) = app.state::<PendingOpen>().0.lock() {

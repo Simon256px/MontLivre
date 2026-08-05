@@ -17,7 +17,7 @@
 
     <!-- Bibliothèque -->
     <main class="view view--library" id="view-library">
-      <span class="spine" aria-hidden="true">MontLivre — 2.2.0</span>
+      <span class="spine" aria-hidden="true">MontLivre — 2.3.0</span>
 
       <header class="masthead">
         <h1 class="masthead__title">Biblio<span class="masthead__break">thèque</span></h1>
@@ -41,6 +41,14 @@
           <p class="masthead__meta" id="library-count"></p>
         </div>
       </header>
+
+      <div class="banner" id="update-banner" hidden>
+        <p class="banner__text" id="update-text"></p>
+        <button class="btn btn--solid" id="update-install" type="button">Installer</button>
+        <button class="btn btn--icon" id="update-dismiss" type="button" aria-label="Plus tard">
+          <span data-icon="close" aria-hidden="true"></span>
+        </button>
+      </div>
 
       <div class="shelf" id="shelf"></div>
 

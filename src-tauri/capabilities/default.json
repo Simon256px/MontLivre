@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "MontLivre n'a besoin que d'ouvrir un sélecteur de fichiers : tout le reste du disque est manipulé côté Rust (src/store.rs), donc aucune permission fs n'est accordée au front.",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open"]
+  "permissions": ["core:default", "dialog:allow-open", "updater:default", "process:default"]
 }

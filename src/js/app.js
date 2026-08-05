@@ -5,6 +5,7 @@ import { DEFAULTS, applySettings, renderSettings } from "./settings.js";
 import { createReader } from "./reader.js";
 import { annotationCount, renderAnnotations } from "./annotations.js";
 import { ingest } from "./import.js";
+import { canUpdate, checkForUpdate, installUpdate } from "./update.js";
 import {
   EXTENSIONS,
   bookFile,
@@ -147,13 +148,54 @@ function drawAnnotations() {
   paint(qs("#notes-list"));
 }
 
+/** Mise à jour : on regarde au démarrage, et un bandeau propose d'installer.
+ *  Refusée une fois, la proposition ne revient pas avant le prochain lancement. */
+let pendingUpdate = null;
+
+async function lookForUpdate({ silent = true } = {}) {
+  const update = await checkForUpdate();
+  if (!update) {
+    if (!silent) window.alert("MontLivre est à jour.");
+    return;
+  }
+  pendingUpdate = update;
+  qs("#update-text").textContent = `Version ${update.version} disponible`;
+  qs("#update-banner").hidden = false;
+}
+
+async function runUpdate() {
+  if (!pendingUpdate) return;
+  const button = qs("#update-install");
+  const text = qs("#update-text");
+  button.disabled = true;
+
+  try {
+    await installUpdate(pendingUpdate, (ratio) => {
+      text.textContent =
+        ratio === null
+          ? "Téléchargement…"
+          : `Téléchargement — ${Math.round(ratio * 100)} %`;
+    });
+  } catch (error) {
+    console.error("Mise à jour impossible", error);
+    window.alert(`La mise à jour a échoué.\n${error.message ?? error}`);
+    text.textContent = `Version ${pendingUpdate.version} disponible`;
+    button.disabled = false;
+  }
+}
+
 function drawSettings() {
-  renderSettings(qs("#settings"), state.settings, (next) => {
-    applySettings(next);
-    reader.applyLayout();
-    drawShelf();
-    scheduleSave();
-  });
+  renderSettings(
+    qs("#settings"),
+    state.settings,
+    (next) => {
+      applySettings(next);
+      reader.applyLayout();
+      drawShelf();
+      scheduleSave();
+    },
+    { canUpdate, onCheckUpdate: () => lookForUpdate({ silent: false }) },
+  );
 }
 
 async function addFiles(picked) {
@@ -240,7 +282,14 @@ async function boot() {
   onOpenRequest(openFromPath);
   const requested = await pendingOpen();
   if (requested) await openFromPath(requested);
+
+  lookForUpdate();
 }
+
+qs("#update-install").addEventListener("click", runUpdate);
+qs("#update-dismiss").addEventListener("click", () => {
+  qs("#update-banner").hidden = true;
+});
 
 qs("#go-notes").addEventListener("click", () => {
   drawAnnotations();

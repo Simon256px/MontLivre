@@ -1,5 +1,28 @@
 # Journal des versions
 
+## 2.3.0
+
+### Ajouté
+
+- **Mise à jour intégrée.** L'application regarde au démarrage s'il existe une
+  version plus récente ; un bandeau propose de l'installer, avec la progression
+  du téléchargement. Une ligne « Vérifier » dans les réglages permet de demander
+  soi-même. L'installation se fait sans quitter l'application, qui redémarre
+  seule.
+
+Chaque version est signée par une clé privée qui ne quitte pas la machine de
+publication ; l'application refuse toute mise à jour qui ne porte pas la
+signature attendue. Le manifeste est publié à côté de l'installeur dans la
+release GitHub.
+
+### À savoir
+
+**Les versions antérieures à la 2.3.0 ne se mettront pas à jour toutes seules** :
+le mécanisme n'existait pas encore chez elles. Une dernière installation à la
+main est nécessaire ; ensuite, tout se fera depuis l'application.
+
+L'installeur passe de 3,52 à 4,16 Mo, le prix des deux composants ajoutés.
+
 ## 2.2.0
 
 ### Corrigé

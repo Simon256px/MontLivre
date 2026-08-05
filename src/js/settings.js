@@ -111,7 +111,7 @@ function slider({ label, min, max, step, value, format, onInput }) {
   return el("div", { class: "stepper" }, input, readout);
 }
 
-export function renderSettings(container, settings, onChange) {
+export function renderSettings(container, settings, onChange, extras = {}) {
   const set = (key) => (value) => {
     settings[key] = value;
     onChange(settings);
@@ -231,6 +231,25 @@ export function renderSettings(container, settings, onChange) {
         }),
       ),
     ),
-    group("À propos", row("MontLivre", "Version 2.0.0 — hors ligne, sans compte.", el("span", {}))),
+    group(
+      "À propos",
+      row("MontLivre", "Version 2.3.0 — hors ligne, sans compte.", el("span", {})),
+      row(
+        "Mise à jour",
+        extras.canUpdate
+          ? "Signée, vérifiée, puis installée sans quitter l'application."
+          : "Indisponible hors de l'application installée.",
+        el(
+          "button",
+          {
+            class: "btn",
+            type: "button",
+            disabled: !extras.canUpdate,
+            onClick: () => extras.onCheckUpdate?.(),
+          },
+          "Vérifier",
+        ),
+      ),
+    ),
   );
 }
