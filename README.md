@@ -4,6 +4,12 @@
 
 <p align="center"><strong>Ranger, lire, régler. Rien d'autre.</strong></p>
 
+<p align="center">
+  <a href="https://simon256px.github.io/MontLivre/">Site</a> ·
+  <a href="../../releases/latest">Télécharger</a> ·
+  <a href="CHANGELOG.md">Journal</a>
+</p>
+
 MontLivre est un lecteur de livres numériques pour Windows. Il lit EPUB, MOBI,
 AZW3, FB2 et CBZ, il tient dans une poignée de mégaoctets, il fonctionne hors
 ligne, il ne demande pas de compte et il n'envoie rien nulle part.
