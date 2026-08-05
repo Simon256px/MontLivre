@@ -1,5 +1,38 @@
 # Journal des versions
 
+## 2.1.0
+
+### Corrigé
+
+- **Tourner la page était impossible** dès qu'on avait cliqué dans le texte —
+  ni à la molette, ni au clavier. foliate-js ne branche aucune entrée de
+  navigation : c'est au programme hôte de le faire, et les gestionnaires
+  vivaient sur le document parent alors que le livre est rendu dans une iframe,
+  dont les événements ne sortent pas. Ils sont désormais rebranchés sur chaque
+  section chargée.
+- **L'icône de l'application** restait l'ancienne malgré le nouveau logo :
+  `build.rs` ne déclarait pas le dossier d'icônes, donc cargo ne le relançait
+  jamais et l'exécutable gardait la ressource précédente.
+
+### Ajouté
+
+- **Notes de bas de page en infobulle**, au survol comme au clic. Reconnaît les
+  appels déclarés en EPUB 3 et les simples exposants.
+- **Annotations** : sélectionner un passage fait apparaître une palette des
+  quatre accents ; la surbrillance se clique pour ouvrir un menu — couleurs,
+  Copier, Épingler, Supprimer.
+- **Épinglage** : les passages épinglés remontent en tête du panneau des
+  annotations, dans une section à part. Un clic y ramène.
+- **Clic sur les bords** pour tourner la page, comme sur une liseuse, et une
+  bride sur la molette — un geste de pavé tactile ne fait plus défiler vingt
+  pages d'un coup.
+
+### À savoir
+
+Surligner deux fois le même passage n'en crée pas deux : foliate n'indexe ses
+surbrillances que par CFI, et deux annotations sur un même passage ne peuvent
+pas coexister. Re-surligner change la couleur.
+
 ## 2.0.0
 
 Réécriture complète. La v1 Electron est archivée sur la branche
