@@ -1,5 +1,27 @@
 # Journal des versions
 
+## 2.0.1
+
+Le socle de la 2.0.0, débarrassé des deux défauts qui le rendaient inutilisable.
+Aucune fonctionnalité ajoutée : le périmètre reste bibliothèque, lecture,
+réglages.
+
+### Corrigé
+
+- **Tourner la page était impossible** — ni à la molette, ni au clavier — dès
+  qu'on avait cliqué une fois dans le texte. foliate-js ne branche aucune entrée
+  de navigation : c'est au programme hôte de le faire, et les gestionnaires
+  vivaient sur le document parent alors que le livre est rendu dans une iframe,
+  dont les événements ne sortent pas. Ils sont désormais rebranchés sur chaque
+  section chargée.
+- **L'icône de l'application** restait l'ancienne malgré le nouveau logo :
+  `build.rs` ne déclarait pas le dossier d'icônes, donc cargo ne le relançait
+  jamais et l'exécutable gardait la ressource précédente.
+
+Au passage, le clic sur les bords tourne la page comme sur une liseuse, et la
+molette est bridée — un geste de pavé tactile ne fait plus défiler vingt pages
+d'un coup.
+
 ## 2.0.0
 
 Réécriture complète. La v1 Electron est archivée sur la branche
