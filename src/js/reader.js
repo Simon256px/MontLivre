@@ -1,7 +1,10 @@
 import { clear, el } from "./ui/dom.js";
+import { icons } from "./ui/shapes.js";
 import { fontFaceRules } from "./ui/fonts.js";
 import "../vendor/foliate-js/view.js";
 import { FootnoteHandler } from "../vendor/foliate-js/footnotes.js";
+import { Overlayer } from "../vendor/foliate-js/overlayer.js";
+import { HIGHLIGHT_COLORS, colorHex, renderNotes } from "./annotations.js";
 
 const IDLE_MS = 2400;
 const HOVER_MS = 320;
@@ -62,7 +65,7 @@ function bookStyles(t) {
   `;
 }
 
-export function createReader(nodes, { onProgress } = {}) {
+export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
   let view = null;
   let entry = null;
   let idleTimer = 0;
@@ -96,21 +99,25 @@ export function createReader(nodes, { onProgress } = {}) {
     };
   }
 
-  function placeNote(rect) {
-    const box = nodes.note.getBoundingClientRect();
+  /** Pose un élément flottant contre un rectangle, sans jamais sortir de
+   *  l'écran. Sert à l'infobulle de note, à la palette et au menu. */
+  function place(node, rect) {
+    const box = node.getBoundingClientRect();
     const margin = 12;
 
     let left = (rect.left + rect.right) / 2 - box.width / 2;
     left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin));
 
-    // Au-dessus de l'appel si la place existe, en dessous sinon.
+    // Au-dessus de la cible si la place existe, en dessous sinon.
     let top = rect.top - box.height - 10;
     if (top < margin) top = rect.bottom + 10;
     top = Math.max(margin, Math.min(top, window.innerHeight - box.height - margin));
 
-    nodes.note.style.left = `${Math.round(left)}px`;
-    nodes.note.style.top = `${Math.round(top)}px`;
+    node.style.left = `${Math.round(left)}px`;
+    node.style.top = `${Math.round(top)}px`;
   }
+
+  const placeNote = (rect) => place(nodes.note, rect);
 
   function hideNote() {
     clearTimeout(hideTimer);
@@ -170,8 +177,175 @@ export function createReader(nodes, { onProgress } = {}) {
     }
   }
 
+  // ---- Annotations ----
+  //
+  // foliate garde la surbrillance en mémoire seulement : chaque fois qu'une
+  // section est (re)chargée, il faut lui redonner ses annotations. D'où le
+  // `create-overlay` plus bas.
+
+  let annotations = [];
+  let pendingSelection = null;
+
+  function closeFloats() {
+    nodes.picker.hidden = true;
+    nodes.menu.hidden = true;
+    pendingSelection = null;
+  }
+
+  function buildPicker() {
+    clear(nodes.picker);
+    for (const color of HIGHLIGHT_COLORS) {
+      nodes.picker.append(
+        el("button", {
+          type: "button",
+          title: color.label,
+          "aria-label": `Surligner en ${color.label}`,
+          style: { background: color.hex },
+          onClick: () => createAnnotation(color.id),
+        }),
+      );
+    }
+  }
+
+  function onSelectionSettled(doc) {
+    const selection = doc.defaultView?.getSelection?.();
+    const text = selection?.isCollapsed === false ? selection.toString().trim() : "";
+    if (!text) {
+      if (nodes.menu.hidden) nodes.picker.hidden = true;
+      return;
+    }
+
+    pendingSelection = { doc, range: selection.getRangeAt(0), text };
+    nodes.menu.hidden = true;
+    nodes.picker.hidden = false;
+    place(nodes.picker, anchorRect(doc, pendingSelection.range));
+  }
+
+  function commitAnnotations() {
+    drawNotesPanel();
+    if (entry) onAnnotationsChange?.(entry, annotations);
+  }
+
+  function drawNotesPanel() {
+    renderNotes(nodes.notesList, annotations, {
+      onOpen: (item) => {
+        view?.showAnnotation({ value: item.cfi });
+        toggleNotes(false);
+      },
+    });
+  }
+
+  async function createAnnotation(colorId) {
+    if (!pendingSelection || !view) return;
+    const { doc, range, text } = pendingSelection;
+    const cfi = view.getCFI(sectionOfDoc.get(doc), range);
+    if (!cfi) return;
+
+    // L'overlayer de foliate est indexé par CFI : deux annotations sur le même
+    // passage ne peuvent pas coexister, et les confondre reviendrait à en
+    // supprimer une en croyant toucher l'autre. Re-surligner change la couleur.
+    const existing = annotations.find((other) => other.cfi === cfi);
+    if (existing) {
+      doc.defaultView?.getSelection?.()?.removeAllRanges();
+      closeFloats();
+      await recolor(existing, colorId);
+      return;
+    }
+
+    const item = {
+      id: crypto.randomUUID(),
+      cfi,
+      color: colorId,
+      text: text.replace(/\s+/g, " ").slice(0, 400),
+      label: "",
+      pinned: false,
+      created: Date.now(),
+    };
+    annotations.push(item);
+
+    const placed = await view.addAnnotation({ value: cfi });
+    item.label = placed?.label ?? "";
+
+    doc.defaultView?.getSelection?.()?.removeAllRanges();
+    closeFloats();
+    commitAnnotations();
+  }
+
+  function openMenu(item, rect) {
+    const row = (name, label, action) =>
+      el(
+        "button",
+        { class: "menu__item", type: "button", role: "menuitem", onClick: action },
+        el("span", { html: icons[name]() }),
+        label,
+      );
+
+    const colors = el("div", { class: "menu__colors" });
+    for (const color of HIGHLIGHT_COLORS) {
+      colors.append(
+        el("button", {
+          type: "button",
+          title: color.label,
+          "aria-label": `Passer en ${color.label}`,
+          style: { background: color.hex },
+          onClick: () => recolor(item, color.id),
+        }),
+      );
+    }
+
+    clear(nodes.menu).append(
+      colors,
+      row("copy", "Copier", () => copyAnnotation(item)),
+      row("book", item.pinned ? "Désépingler" : "Épingler", () => togglePin(item)),
+      row("trash", "Supprimer", () => removeAnnotation(item)),
+    );
+
+    nodes.picker.hidden = true;
+    nodes.menu.hidden = false;
+    place(nodes.menu, rect);
+  }
+
+  async function recolor(item, colorId) {
+    item.color = colorId;
+    await view?.addAnnotation({ value: item.cfi }); // redessine avec la nouvelle teinte
+    closeFloats();
+    commitAnnotations();
+  }
+
+  function copyAnnotation(item) {
+    navigator.clipboard?.writeText(item.text).catch((error) => console.warn("Copie refusée", error));
+    closeFloats();
+  }
+
+  function togglePin(item) {
+    item.pinned = !item.pinned;
+    closeFloats();
+    commitAnnotations();
+    if (item.pinned) toggleNotes(true);
+  }
+
+  async function removeAnnotation(item) {
+    annotations = annotations.filter((other) => other.id !== item.id);
+    await view?.deleteAnnotation({ value: item.cfi });
+    closeFloats();
+    commitAnnotations();
+  }
+
+  function toggleNotes(open = nodes.notes.hidden) {
+    nodes.notes.hidden = !open;
+    nodes.notesToggle.setAttribute("aria-expanded", String(open));
+    if (open) {
+      nodes.toc.hidden = true;
+      nodes.tocToggle.setAttribute("aria-expanded", "false");
+      setImmersive(false);
+    } else {
+      wake();
+    }
+  }
+
   function setImmersive(on) {
-    document.body.classList.toggle("is-immersive", on && nodes.toc.hidden);
+    const panelsClosed = nodes.toc.hidden && nodes.notes.hidden;
+    document.body.classList.toggle("is-immersive", on && panelsClosed);
   }
 
   function wake() {
@@ -232,8 +406,13 @@ export function createReader(nodes, { onProgress } = {}) {
   function toggleToc(open = nodes.toc.hidden) {
     nodes.toc.hidden = !open;
     nodes.tocToggle.setAttribute("aria-expanded", String(open));
-    if (open) setImmersive(false);
-    else wake();
+    if (open) {
+      nodes.notes.hidden = true;
+      nodes.notesToggle.setAttribute("aria-expanded", "false");
+      setImmersive(false);
+    } else {
+      wake();
+    }
   }
 
   /** Tant que le paginateur n'a pas mesuré ses colonnes, il renvoie des NaN.
@@ -264,6 +443,9 @@ export function createReader(nodes, { onProgress } = {}) {
 
   function close() {
     hideNote();
+    closeFloats();
+    annotations = [];
+    drawNotesPanel();
     view?.close();
     view?.remove();
     view = null;
@@ -278,8 +460,11 @@ export function createReader(nodes, { onProgress } = {}) {
   async function open(book, file) {
     close();
     entry = book;
+    annotations = Array.isArray(book.annotations) ? book.annotations : [];
+    drawNotesPanel();
     nodes.title.textContent = book.title;
     toggleToc(false);
+    toggleNotes(false);
 
     view = document.createElement("foliate-view");
     view.addEventListener("relocate", onRelocate);
@@ -287,6 +472,23 @@ export function createReader(nodes, { onProgress } = {}) {
       sectionOfDoc.set(event.detail.doc, event.detail.index);
       bindBookDocument(event.detail.doc);
     });
+    view.addEventListener("draw-annotation", ({ detail }) => {
+      const item = annotations.find((other) => other.cfi === detail.annotation.value);
+      detail.draw(Overlayer.highlight, { color: colorHex(item?.color) });
+    });
+
+    // Une section rechargée revient nue : on lui rend ses surbrillances.
+    view.addEventListener("create-overlay", () => {
+      for (const item of annotations) view.addAnnotation({ value: item.cfi });
+    });
+
+    view.addEventListener("show-annotation", ({ detail }) => {
+      const item = annotations.find((other) => other.cfi === detail.value);
+      const doc = detail.range?.startContainer?.ownerDocument;
+      if (!item || !doc) return;
+      openMenu(item, anchorRect(doc, detail.range));
+    });
+
     // Un clic sur un appel de note ouvre la même infobulle, sans naviguer.
     view.addEventListener("link", (event) => {
       const link = event.detail.a;
@@ -344,7 +546,9 @@ export function createReader(nodes, { onProgress } = {}) {
         turn(event.shiftKey ? -1 : 1);
         break;
       case "Escape":
-        if (!nodes.note.hidden) hideNote();
+        if (!nodes.menu.hidden || !nodes.picker.hidden) closeFloats();
+        else if (!nodes.note.hidden) hideNote();
+        else if (!nodes.notes.hidden) toggleNotes(false);
         else if (!nodes.toc.hidden) toggleToc(false);
         else wake();
         break;
@@ -369,14 +573,29 @@ export function createReader(nodes, { onProgress } = {}) {
   /** Clic sur les bords pour tourner, comme sur une liseuse. Les liens et les
    *  sélections en cours gardent la priorité. */
   function onClick(event) {
+    // Un premier clic ne sert qu'à refermer ce qui flotte.
+    if (!nodes.menu.hidden || !nodes.picker.hidden) {
+      closeFloats();
+      return;
+    }
     if (event.target?.closest?.("a[href]")) return;
+
     const win = event.view ?? window;
     if (!win.getSelection?.()?.isCollapsed) return;
 
     const width = win.innerWidth || 1;
-    if (event.clientX < width * 0.22) turn(-1);
-    else if (event.clientX > width * 0.78) turn(1);
-    else wake();
+    const direction = event.clientX < width * 0.22 ? -1 : event.clientX > width * 0.78 ? 1 : 0;
+    if (!direction) {
+      wake();
+      return;
+    }
+
+    // Le même clic peut avoir touché une annotation : foliate teste la
+    // collision de son côté. On lui laisse un tour de boucle pour ouvrir son
+    // menu, faute de quoi on tourne la page.
+    setTimeout(() => {
+      if (nodes.menu.hidden) turn(direction);
+    }, 0);
   }
 
   /** Le livre vit dans une iframe, et les événements n'en sortent pas : ni
@@ -402,13 +621,19 @@ export function createReader(nodes, { onProgress } = {}) {
       clearTimeout(hoverTimer);
       scheduleHide();
     });
+
+    // Un tour de boucle : la sélection n'est arrêtée qu'après le mouseup.
+    doc.addEventListener("mouseup", () => setTimeout(() => onSelectionSettled(doc), 0));
   }
 
   nodes.page.addEventListener("pointermove", wake);
   nodes.page.addEventListener("wheel", onWheel, { passive: true });
   nodes.page.addEventListener("click", onClick);
   nodes.tocToggle.addEventListener("click", () => toggleToc());
+  nodes.notesToggle.addEventListener("click", () => toggleNotes());
   document.addEventListener("keydown", onKey);
+  buildPicker();
+  drawNotesPanel();
 
   // On peut aller lire la note à la souris sans qu'elle se dérobe.
   nodes.note.addEventListener("mouseenter", () => clearTimeout(hideTimer));

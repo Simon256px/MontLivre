@@ -62,11 +62,20 @@ const reader = createReader(
     noteBody: qs("#note-body"),
     noteLabel: qs("#note-label"),
     noteClose: qs("#note-close"),
+    notes: qs("#notes"),
+    notesList: qs("#notes-list"),
+    notesToggle: qs("#toggle-notes"),
+    picker: qs("#picker"),
+    menu: qs("#menu"),
   },
   {
     onProgress: (book, fraction, cfi) => {
       book.fraction = fraction;
       if (cfi) book.cfi = cfi;
+      scheduleSave();
+    },
+    onAnnotationsChange: (book, annotations) => {
+      book.annotations = annotations;
       scheduleSave();
     },
   },

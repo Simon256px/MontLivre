@@ -58,6 +58,9 @@
           <button class="btn btn--icon" id="toggle-toc" type="button" aria-label="Sommaire" aria-expanded="false">
             <span data-icon="list" aria-hidden="true"></span>
           </button>
+          <button class="btn btn--icon" id="toggle-notes" type="button" aria-label="Annotations" aria-expanded="false">
+            <span data-icon="notes" aria-hidden="true"></span>
+          </button>
           <button class="btn btn--icon" id="reader-settings" type="button" aria-label="Réglages">
             <span data-icon="sliders" aria-hidden="true"></span>
           </button>
@@ -70,6 +73,14 @@
       </nav>
 
       <div class="page" id="page"></div>
+
+      <nav class="notes" id="notes" hidden aria-label="Annotations">
+        <p class="notes__head">Annotations</p>
+        <div class="notes__list" id="notes-list"></div>
+      </nav>
+
+      <div class="picker" id="picker" hidden role="group" aria-label="Surligner la sélection"></div>
+      <div class="menu" id="menu" hidden role="menu" aria-label="Actions sur l'annotation"></div>
 
       <aside class="note" id="note" hidden aria-live="polite">
         <div class="note__head">

@@ -77,6 +77,10 @@ export const icons = {
     icon(
       '<path d="M3 8h18M3 16h18"/><rect x="7" y="5" width="6" height="6" fill="currentColor" stroke="none"/><rect x="13" y="13" width="6" height="6" fill="currentColor" stroke="none"/>',
     ),
+  book: () => icon('<path d="M12 7 4 5v14l8 2M12 7l8-2v14l-8 2M12 7v14"/>'),
+  copy: () => icon('<rect x="9" y="9" width="11" height="11"/><path d="M15 5H4v11h5"/>'),
+  trash: () => icon('<path d="M4 7h16M10 7V4h4v3M6.5 7 8 20h8l1.5-13"/>'),
+  notes: () => icon('<path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/>'),
 };
 
 /** Remplit tous les [data-icon] et [data-shape] d'une racine donnée. */
