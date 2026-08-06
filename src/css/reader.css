@@ -72,6 +72,19 @@ foliate-view {
   height: 100%;
 }
 
+/* Un PDF est rendu en images : aucun thème ne peut s'y appliquer, et sous
+   Nuit on se prend une page blanche en pleine figure. L'inversion, suivie
+   d'une rotation de teinte qui rend leurs couleurs aux images, est le seul
+   moyen d'obtenir une page sombre lisible. */
+body[data-theme="nuit"][data-fixed="true"] .page foliate-view {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* En thème clair, on réchauffe seulement le blanc cru vers le papier choisi. */
+body[data-fixed="true"]:not([data-theme="nuit"]):not([data-theme="contraste"]) .page foliate-view {
+  filter: sepia(0.12) brightness(0.98);
+}
+
 /* ---- Palette de surlignage et menu contextuel ----
 
    Même anatomie qu'un menu flottant ordinaire — lignes de hauteur égale, icône

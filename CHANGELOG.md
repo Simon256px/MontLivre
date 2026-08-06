@@ -1,5 +1,24 @@
 # Journal des versions
 
+## 2.3.1
+
+### Corrigé
+
+- **Les PDF ignoraient tous les réglages** : deux pages imposées, fond blanc,
+  thème sans effet. Un PDF est en mise en page fixe, et foliate le confie alors
+  à un autre moteur (`foliate-fxl`) qui n'accepte ni thème, ni corps de texte,
+  ni nombre de colonnes — ses pages sont des images.
+
+  Deux choses se pilotent malgré tout, et c'est fait :
+  le **nombre de pages par écran** suit désormais le réglage Une/Deux, réglé
+  avant l'ouverture du livre ; et le **thème s'applique par filtre** — inversion
+  sous Nuit, réchauffement léger sous les thèmes clairs — au lieu d'une page
+  blanche en pleine figure.
+
+Ce que cela ne répare pas : la taille du texte, l'interligne, la longueur de
+ligne et les marges restent sans effet sur un PDF. Ce sont des images ; il n'y a
+rien à remettre en page.
+
 ## 2.3.0
 
 ### Ajouté

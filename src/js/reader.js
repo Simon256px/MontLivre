@@ -2,6 +2,7 @@ import { clear, el } from "./ui/dom.js";
 import { icons } from "./ui/shapes.js";
 import { fontFaceRules } from "./ui/fonts.js";
 import "../vendor/foliate-js/view.js";
+import { makeBook } from "../vendor/foliate-js/view.js";
 import { FootnoteHandler } from "../vendor/foliate-js/footnotes.js";
 import { Overlayer } from "../vendor/foliate-js/overlayer.js";
 import { HIGHLIGHT_COLORS, colorHex } from "./annotations.js";
@@ -73,6 +74,9 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
   let entry = null;
   let idleTimer = 0;
   let currentHref = null;
+  let currentFile = null;
+  let fixedLayout = false;
+  let loadedSpread = 1;
 
   // ---- Notes de bas de page ----
   //
@@ -342,6 +346,19 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
   function applyLayout() {
     if (!view?.renderer) return;
     const t = readTokens();
+
+    // En mise en page fixe, rien de tout ceci n'a de prise : les pages sont des
+    // images. Le seul réglage qui compte s'applique à l'ouverture, il faut donc
+    // rouvrir le livre pour qu'il change.
+    if (fixedLayout) {
+      if (t.spread !== loadedSpread && entry && currentFile) {
+        const book = entry;
+        const file = currentFile;
+        open(book, file);
+      }
+      return;
+    }
+
     view.renderer.setStyles?.(bookStyles(t));
     view.renderer.setAttribute("margin", `${Math.round(t.margin)}px`);
     view.renderer.setAttribute("gap", "7%");
@@ -430,6 +447,9 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
     hideNote();
     closeFloats();
     annotations = [];
+    currentFile = null;
+    fixedLayout = false;
+    delete document.body.dataset.fixed;
     view?.close();
     view?.remove();
     view = null;
@@ -485,7 +505,22 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
     });
     nodes.page.replaceChildren(view);
 
-    await view.open(file);
+    // Les PDF (et les EPUB à mise en page fixe) sont rendus par foliate-fxl,
+    // qui ignore thème, corps du texte et colonnes : ses pages sont des images.
+    // Une seule chose se pilote, et seulement avant l'ouverture — le nombre de
+    // pages par écran. D'où le livre construit à la main plutôt que le fichier
+    // passé directement.
+    currentFile = file;
+    loadedSpread = readTokens().spread;
+
+    const loaded = await makeBook(file);
+    fixedLayout = loaded.rendition?.layout === "pre-paginated";
+    if (fixedLayout && loaded.rendition) {
+      loaded.rendition.spread = loadedSpread === 2 ? "auto" : "none";
+    }
+    document.body.dataset.fixed = String(fixedLayout);
+
+    await view.open(loaded);
     applyLayout();
     renderToc(view.book?.toc);
 
