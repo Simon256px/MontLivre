@@ -137,6 +137,19 @@ body[data-theme="nuit"][data-fixed="true"] .page foliate-view {
   box-shadow: inset 0 0 0 3px var(--paper-ink);
 }
 
+/* Dire pourquoi rien n'est proposé vaut mieux qu'une palette qui n'agit pas. */
+.picker__note {
+  margin: 0;
+  padding: 10px 14px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-ink);
+  white-space: nowrap;
+}
+
 .menu {
   display: grid;
   min-width: 208px;

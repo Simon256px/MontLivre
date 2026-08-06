@@ -222,8 +222,25 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
       return;
     }
 
-    pendingSelection = { doc, range: selection.getRangeAt(0), text };
+    const range = selection.getRangeAt(0);
     nodes.menu.hidden = true;
+
+    // foliate ne sait pas dessiner de surbrillance en page fixe : son moteur
+    // n'émet jamais `create-overlayer` (« TODO » dans son code). Proposer la
+    // palette reviendrait à enregistrer une annotation que rien n'afficherait.
+    // On le dit, plutôt que de se taire.
+    if (fixedLayout) {
+      pendingSelection = null;
+      clear(nodes.picker).append(
+        el("p", { class: "picker__note" }, "Surlignage impossible sur un PDF"),
+      );
+      nodes.picker.hidden = false;
+      place(nodes.picker, anchorRect(doc, range));
+      return;
+    }
+
+    if (!nodes.picker.querySelector("button")) buildPicker();
+    pendingSelection = { doc, range, text };
     nodes.picker.hidden = false;
     place(nodes.picker, anchorRect(doc, pendingSelection.range));
   }

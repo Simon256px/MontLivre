@@ -48,7 +48,7 @@ statistiques reviendront ; les annotations sont revenues en 2.2.0.
 - **Une page ou deux**, quatre thèmes, police, corps, interligne, largeur, marges
 - **Reprise exacte** par CFI : elle survit à un changement de taille de texte
 - **Notes de bas de page en infobulle**, au survol comme au clic
-- **Annotations** — surlignage quatre couleurs, favoris, écran dédié
+- **Annotations** — surlignage quatre couleurs, favoris, écran dédié (EPUB seulement)
 - **Mise à jour intégrée**, signée et vérifiée
 - **Couvertures engendrées** pour les livres qui n'en ont pas
 - Association des fichiers, instance unique, glisser-déposer

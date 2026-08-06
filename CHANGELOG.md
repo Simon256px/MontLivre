@@ -1,5 +1,21 @@
 # Journal des versions
 
+## 2.3.3
+
+### Corrigé
+
+- **L'application proposait de surligner un PDF, puis ne dessinait rien.**
+  foliate ne sait pas poser de surbrillance sur un livre en page fixe : son
+  moteur n'émet jamais l'événement qui crée la couche de dessin — la ligne
+  porte encore la mention « TODO » dans son code. L'annotation était donc
+  enregistrée, et rien n'apparaissait.
+
+  La palette n'est plus proposée dans ce cas ; un message dit pourquoi. Sur les
+  EPUB, tout est inchangé.
+
+Une promesse tenue à moitié est pire qu'une fonction absente : le site et le
+README l'annoncent désormais correctement.
+
 ## 2.3.2
 
 ### Corrigé
