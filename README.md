@@ -32,8 +32,9 @@ Windows.
 | Moteur de lecture | maison (`extract.js`) | foliate-js |
 | Formats | PDF, EPUB | EPUB, MOBI, AZW3, FB2, CBZ + PDF (page fixe) |
 | Chaîne de build | Node + npm + electron-builder | Rust seul, aucun bundler |
-| Installeur | 122 Mo | **3,54 Mo** |
-| Mémoire au repos | ~180 Mo | 28 Mo |
+| Installeur | 122 Mo | **4,16 Mo** |
+| Mémoire au repos | ~180 Mo | ~30 Mo |
+| Lignes de code | 6 926 | 3 626 |
 
 **Le PDF perd sa remise en page.** foliate-js rend les PDF en pages fixes, pas en
 texte refluant. C'est le prix de l'abandon du moteur maison, et c'est le même
@@ -41,7 +42,18 @@ compromis que fait Readest.
 
 Fonctions de la v1 mises de côté pour l'instant : OCR, RSVP, mode focus, bionic
 reading, stylet, succès, Pomodoro, dictionnaire, lecture parallèle. Les
-annotations et les statistiques reviendront après la v2.0.
+statistiques reviendront ; les annotations sont revenues en 2.2.0.
+
+## Ce qu'il sait faire
+
+- **Cinq formats** — EPUB, MOBI, AZW3, FB2, CBZ, plus les PDF en page fixe
+- **Une page ou deux**, quatre thèmes, police, corps, interligne, largeur, marges
+- **Reprise exacte** par CFI : elle survit à un changement de taille de texte
+- **Notes de bas de page en infobulle**, au survol comme au clic
+- **Annotations** — surlignage quatre couleurs, favoris, écran dédié
+- **Mise à jour intégrée**, signée et vérifiée
+- **Couvertures engendrées** pour les livres qui n'en ont pas
+- Association des fichiers, instance unique, glisser-déposer
 
 ## Installer la chaîne de développement
 
@@ -98,23 +110,57 @@ Les icônes sont déjà générées dans `src-tauri/icons/`. Si le logo change :
 powershell -ExecutionPolicy Bypass -File tools/make-icons.ps1
 ```
 
-L'installeur produit pèse **3,54 Mo**.
+L'installeur produit pèse **4,16 Mo**.
+
+### Publier une version
+
+Les mises à jour sont signées : sans signature, les applications installées
+refusent la version. La clé privée ne vit pas dans le dépôt.
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = "C:\chemin\vers\montlivre.key"
+$sec = Read-Host "Mot de passe de la cle" -AsSecureString
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))
+cargo tauri build
+```
+
+La compilation produit alors un `.sig` à côté de l'installeur. Le manifeste
+interrogé par l'application se fabrique ensuite :
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/make-manifest.ps1 -Notes "..."
+```
+
+Publiez enfin les **trois** fichiers dans la release — installeur, `.sig` et
+`latest.json` — car le point d'entrée configuré est
+`releases/latest/download/latest.json`.
+
+> ⚠️ **La clé privée est irremplaçable.** La perdre couperait définitivement la
+> mise à jour de toutes les installations existantes : signer avec une nouvelle
+> clé produirait des versions qu'elles refuseraient. Gardez-en une sauvegarde
+> hors de cette machine.
 
 ## Architecture
 
 ```
-src/                  front — HTML, CSS et ES modules natifs, aucun bundler
-├─ css/               tokens.css porte toute l'identité visuelle
+src/                    front — HTML, CSS et ES modules natifs, aucun bundler
+├─ css/                 tokens.css porte toute l'identité visuelle
 ├─ js/
-│  ├─ app.js          routeur des trois vues
-│  ├─ library.js      étagère, recherche
-│  ├─ reader.js       enrobage de <foliate-view>
-│  ├─ settings.js     thèmes, typographie, accent
-│  └─ ui/             dom.js, shapes.js (formes Y2K + icônes), cover.js
-└─ vendor/foliate-js/ moteur de lecture (MIT) — arrive au jalon 3
+│  ├─ app.js            routeur des quatre vues
+│  ├─ library.js        étagère, recherche
+│  ├─ reader.js         enrobage de <foliate-view>, notes, surlignage
+│  ├─ annotations.js    écran des annotations, palette des couleurs
+│  ├─ settings.js       thèmes, typographie, accent, une ou deux pages
+│  ├─ store.js          persistance : commandes Rust, ou navigateur en secours
+│  ├─ import.js         copie du fichier, métadonnées, vignette de couverture
+│  ├─ update.js         vérification et installation des mises à jour
+│  └─ ui/               dom.js, shapes.js (formes Y2K + icônes), cover.js, fonts.js
+├─ fonts/               Archivo et Literata, sous-ensembles latin
+└─ vendor/foliate-js/   moteur de lecture (MIT), pdf.js compris
 
-src-tauri/            coque Rust
-└─ src/store.rs       tous les accès disque ; le front n'a aucune permission fs
+src-tauri/              coque Rust
+├─ src/store.rs         tous les accès disque ; le front n'a aucune permission fs
+└─ src/lib.rs           associations de fichiers, instance unique, plugins
 ```
 
 Le front ne reçoit aucune permission `fs` : il manipule des identifiants, et
