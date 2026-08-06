@@ -81,6 +81,9 @@ foliate-view {
    faisait que teinter à l'aveugle. */
 body[data-fixed="true"] .page {
   background: var(--paper);
+  /* Sans isolation, la fusion irait chercher tout ce qui se trouve derrière —
+     grain, chrome, fond de la vue. On la borne à la page. */
+  isolation: isolate;
 }
 
 body[data-fixed="true"]:not([data-theme="nuit"]) .page foliate-view {
