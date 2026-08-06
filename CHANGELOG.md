@@ -1,5 +1,18 @@
 # Journal des versions
 
+## 2.3.2
+
+### Corrigé
+
+- **La page des PDF restait blanche.** Le filtre de la 2.3.1 se contentait de
+  teinter à l'aveugle, bien trop faiblement pour effacer un blanc pur.
+
+  La page est désormais fusionnée au papier du thème en mode `multiply` : chaque
+  pixel est multiplié par le fond, si bien que le blanc rend exactement la
+  couleur du papier choisi et que le texte noir reste noir. C'est arithmétique,
+  et non plus approximatif. Sous Nuit, l'inversion prend le relais — multiplier
+  ne donnerait qu'une page noire illisible.
+
 ## 2.3.1
 
 ### Corrigé
