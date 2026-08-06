@@ -1,6 +1,6 @@
 [package]
 name = "montlivre"
-version = "2.3.4"
+version = "2.3.5"
 description = "MontLivre — ranger, lire, régler."
 authors = ["Simon Courtois <simoncrts@protonmail.com>"]
 license = "MIT"

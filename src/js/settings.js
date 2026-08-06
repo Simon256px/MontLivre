@@ -233,7 +233,7 @@ export function renderSettings(container, settings, onChange, extras = {}) {
     ),
     group(
       "À propos",
-      row("MontLivre", "Version 2.3.4 — hors ligne, sans compte.", el("span", {})),
+      row("MontLivre", "Version 2.3.5 — hors ligne, sans compte.", el("span", {})),
       row(
         "Mise à jour",
         extras.canUpdate

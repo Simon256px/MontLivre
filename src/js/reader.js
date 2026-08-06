@@ -279,7 +279,11 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
       return;
     }
 
-    if (!nodes.picker.querySelector("button")) buildPicker();
+    // Toujours reconstruire : après un PDF la palette contient le bouton
+    // « Copier », qui est lui aussi un <button>. Se fier à sa présence laissait
+    // ce bouton en place sur le livre suivant, et rendait tout surlignage
+    // impossible sans le moindre message.
+    buildPicker();
     pendingSelection = { doc, range, text };
     nodes.picker.hidden = false;
     place(nodes.picker, anchorRect(doc, pendingSelection.range));

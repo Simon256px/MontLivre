@@ -90,10 +90,17 @@ body[data-fixed="true"]:not([data-theme="nuit"]) .page foliate-view {
   mix-blend-mode: multiply;
 }
 
-/* Sous Nuit, multiplier ne donnerait qu'une page noire illisible : il faut
-   d'abord inverser, la rotation de teinte rendant leurs couleurs aux images. */
+/* Sous Nuit, il faut d'abord inverser — la rotation de teinte rendant leurs
+   couleurs aux images. Mais l'inversion seule donne une page noir absolu sur un
+   fond #141414, donc un rectangle visible, et un texte blanc pur, agressif.
+
+   La fusion « screen » corrige les deux : screen(0, fond) rend exactement le
+   fond, la page se confond donc avec le papier ; et le texte, assombri à 0,85
+   avant fusion, retombe autour de #dc — la teinte d'encre du thème plutôt que
+   du blanc cru. */
 body[data-theme="nuit"][data-fixed="true"] .page foliate-view {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(1) hue-rotate(180deg) brightness(0.85);
+  mix-blend-mode: screen;
 }
 
 /* ---- Palette de surlignage et menu contextuel ----

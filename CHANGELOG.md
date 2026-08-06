@@ -1,5 +1,26 @@
 # Journal des versions
 
+## 2.3.5
+
+### Corrigé
+
+- **Plus aucune annotation n'était possible après avoir ouvert un PDF.** La
+  palette y est remplacée par un bouton « Copier » — qui est lui aussi un
+  bouton. Le test qui décidait de reconstruire la palette se fiait à la présence
+  d'un bouton : il la croyait donc déjà prête, et laissait « Copier » en place
+  sur le livre suivant. Elle est désormais reconstruite à chaque sélection.
+- **Le thème Nuit rendait mal les PDF.** L'inversion seule donnait une page noir
+  absolu sur un fond `#141414` — un rectangle visible — et un texte blanc pur,
+  agressif. Une fusion `screen` ramène la page exactement à la couleur du
+  papier, et le texte à la teinte d'encre du thème.
+
+### Vérifié
+
+Revue complète des quatre écrans et des deux formats : import, recherche, écran
+vide, couvertures, sommaire, navigation clavier et molette, les trois formes
+d'appel de note, création et suppression d'annotations, favoris, retour au
+passage, réglages, et les quatre thèmes sur page fixe comme sur texte refluant.
+
 ## 2.3.4
 
 ### Corrigé
