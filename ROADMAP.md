@@ -16,12 +16,14 @@ Deux principes tiennent le projet :
 
 - [x] **v2.0 — le socle.** Table rase de la v1, coque Tauri 2, lecture confiée à
       foliate-js, identité visuelle brutaliste, bibliothèque, réglages.
-- [ ] **v2.1 — annoter.** Surlignage plusieurs couleurs, notes attachées,
-      signets, export Markdown. foliate-js fournit déjà `addAnnotation` et la
-      couche de dessin ; c'est la brique la plus proche.
-- [ ] **v2.2 — savoir où on en est.** Temps de lecture, objectif quotidien,
+- [x] **v2.2 — annoter.** Surlignage quatre couleurs, favoris, écran dédié
+      rassemblant tous les passages, notes de bas de page en infobulle. Restent
+      les notes écrites et l'export Markdown.
+- [x] **v2.3 — se mettre à jour seule.** Versions signées, manifeste publié avec
+      la release, installation sans quitter l'application.
+- [ ] **v2.4 — savoir où on en est.** Temps de lecture, objectif quotidien,
       streak, vitesse moyenne.
-- [ ] **v2.3 — sortir de Windows.** macOS et Linux, que Tauri rend accessibles
+- [ ] **v2.5 — sortir de Windows.** macOS et Linux, que Tauri rend accessibles
       sans réécriture.
 
 ## 📚 Lecture
@@ -30,10 +32,11 @@ Deux principes tiennent le projet :
 - [x] PDF en page fixe (rendu pdf.js, expérimental côté foliate)
 - [x] Pagination en colonnes, sommaire interactif, reprise exacte par CFI
 - [x] Mode immersif : le chrome s'efface pendant la lecture
-- [ ] Double page (le paginateur accepte déjà `max-column-count`)
+- [x] Une page ou deux, au choix
+- [x] Notes de bas de page en infobulle, au survol comme au clic
+- [x] Clic sur les bords pour tourner, molette bridée
 - [ ] Défilement continu (attribut `flow="scrolled"`, à exposer dans les réglages)
 - [ ] Recherche plein texte dans le livre (`search.js` est déjà là)
-- [ ] Notes de bas de page en infobulle (`footnotes.js` est déjà là)
 - [ ] **Le reflow des PDF.** Perdu avec la v1. Ne reviendra que si une solution
       existe qui ne demande pas de remaintenir un moteur maison.
 
@@ -55,15 +58,17 @@ Deux principes tiennent le projet :
 - [ ] Tags et favoris
 - [ ] Recherche plein texte dans toute la bibliothèque
 
-## ✍️ Annotations — v2.1
+## ✍️ Annotations
 
-- [ ] Surlignage plusieurs couleurs (les quatre accents de la palette)
-- [ ] Notes attachées à un passage
+- [x] Surlignage quatre couleurs (les accents de la palette)
+- [x] Favoris, remontés en tête de l'écran Annotations
+- [x] Écran dédié rassemblant les passages de toute la bibliothèque
+- [ ] Notes écrites attachées à un passage
 - [ ] Signets
 - [ ] Export Markdown, regroupé par chapitre
 - [ ] Recherche dans les annotations
 
-## 📊 Statistiques — v2.2
+## 📊 Statistiques — v2.4
 
 - [ ] Temps de lecture par livre et par jour
 - [ ] Objectif quotidien
@@ -73,8 +78,8 @@ Deux principes tiennent le projet :
 ## 💻 Plateformes
 
 - [x] Windows (NSIS)
-- [ ] Mise à jour intégrée (`tauri-plugin-updater` — demande une clé de signature)
-- [ ] Association des fichiers `.epub` et consorts
+- [x] Mise à jour intégrée, signée et vérifiée
+- [x] Association des fichiers `.epub` et consorts
 - [ ] macOS
 - [ ] Linux (AppImage / Flatpak)
 - [ ] Android et iOS, que Tauri 2 rend envisageables
