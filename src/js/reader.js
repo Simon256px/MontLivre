@@ -164,20 +164,44 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
     if (noteAnchor) placeNote(noteAnchor);
   });
 
+  const OPS_NS = "http://www.idpf.org/2007/ops";
+
+  /** foliate reconnaît un appel de note à son `epub:type`, à son rôle ARIA, ou
+   *  à sa mise en exposant. Beaucoup d'EPUB n'ont rien de tout cela : un simple
+   *  lien interne dont le texte est un numéro. On rattrape ce cas. */
+  function looksLikeNoteRef(link) {
+    const label = link.textContent.trim();
+    return label.length <= 5 && /^[[(]?\d{1,4}[\])]?$/.test(label);
+  }
+
   async function openFootnote(doc, link) {
     if (!view?.book) return;
     const raw = link.getAttribute("href");
-    if (!raw) return;
+    if (!raw || raw.startsWith("http")) return;
 
     const section = view.book.sections?.[sectionOfDoc.get(doc)];
     const href = section?.resolveHref?.(raw) ?? raw;
     if (view.book.isExternal?.(href)) return;
 
     noteAnchor = anchorRect(doc, link);
+    // `handle` n'attend de l'événement que `detail` et `preventDefault` : on
+    // peut donc lui en fabriquer un depuis un survol aussi bien qu'un clic.
+    const event = { detail: { a: link, href }, preventDefault() {} };
+
     try {
-      // `handle` n'attend de l'événement que `detail` et `preventDefault` : on
-      // peut donc lui en fabriquer un depuis un survol aussi bien qu'un clic.
-      await footnotes.handle(view.book, { detail: { a: link, href }, preventDefault() {} });
+      const handled = await footnotes.handle(view.book, event);
+      if (handled !== undefined) return;
+
+      // foliate a décliné. Si l'appel en a tout l'air, on le lui déclare le
+      // temps d'un appel — l'attribut est retiré aussitôt après, le document
+      // du livre en ressort intact.
+      if (!looksLikeNoteRef(link)) return;
+      link.setAttributeNS(OPS_NS, "epub:type", "noteref");
+      try {
+        await footnotes.handle(view.book, event);
+      } finally {
+        link.removeAttributeNS(OPS_NS, "type");
+      }
     } catch (error) {
       console.warn("Note illisible", error);
       hideNote();
@@ -232,7 +256,23 @@ export function createReader(nodes, { onProgress, onAnnotationsChange } = {}) {
     if (fixedLayout) {
       pendingSelection = null;
       clear(nodes.picker).append(
-        el("p", { class: "picker__note" }, "Surlignage impossible sur un PDF"),
+        el(
+          "button",
+          {
+            class: "picker__action",
+            type: "button",
+            title: "Le surlignage est impossible sur un PDF, la copie non",
+            onClick: () => {
+              navigator.clipboard
+                ?.writeText(text)
+                .catch((error) => console.warn("Copie refusée", error));
+              doc.defaultView?.getSelection?.()?.removeAllRanges();
+              closeFloats();
+            },
+          },
+          el("span", { html: icons.copy() }),
+          "Copier",
+        ),
       );
       nodes.picker.hidden = false;
       place(nodes.picker, anchorRect(doc, range));

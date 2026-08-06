@@ -1,5 +1,25 @@
 # Journal des versions
 
+## 2.3.4
+
+### Corrigé
+
+- **Beaucoup d'appels de note n'ouvraient pas leur infobulle.** foliate ne
+  reconnaît un appel qu'à son `epub:type`, à son rôle ARIA ou à sa mise en
+  exposant. Or quantité d'EPUB se contentent d'un lien interne dont le texte est
+  un numéro — rien ne se passait alors.
+
+  Ces appels sont désormais rattrapés : quand foliate décline et que le lien en
+  a tout l'air, il lui est déclaré le temps d'un appel, puis l'attribut est
+  retiré. Le document du livre ressort intact.
+
+### Changé
+
+- **Sur un PDF, la sélection propose « Copier ».** La version précédente se
+  contentait d'annoncer que le surlignage était impossible — exact, mais
+  stérile. La copie, elle, fonctionne : autant proposer ce qui marche plutôt que
+  d'expliquer ce qui ne marche pas.
+
 ## 2.3.3
 
 ### Corrigé
