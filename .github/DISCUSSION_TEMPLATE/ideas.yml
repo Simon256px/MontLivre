@@ -1,0 +1,55 @@
+title: "[Idée] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Deux principes tiennent le projet, et une idée doit vivre avec :
+
+        > **Hors ligne par défaut.** Aucun compte, aucun envoi. Ce qui exigerait
+        > le réseau sera optionnel et signalé comme tel.
+        >
+        > **La légèreté est une fonctionnalité.** L'installeur pèse 4,16 Mo. Ce
+        > qui pèse doit rapporter plus qu'il ne coûte.
+
+        Jetez d'abord un œil à la [feuille de route](https://github.com/Simon256px/MontLivre/wiki/Feuille-de-route) :
+        votre idée y est peut-être déjà, ou déjà écartée.
+
+  - type: textarea
+    id: manque
+    attributes:
+      label: Ce qui manque
+      description: Le besoin d'abord, la solution ensuite. Qu'est-ce qui est pénible aujourd'hui ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposition
+    attributes:
+      label: Ce que vous proposez
+      description: À quoi ça ressemblerait dans l'application — quel écran, quel geste.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: domaine
+    attributes:
+      label: Domaine
+      options:
+        - Lecture
+        - Bibliothèque
+        - Annotations
+        - Personnalisation
+        - Statistiques
+        - Accessibilité
+        - Plateformes
+        - Autre
+    validations:
+      required: true
+
+  - type: textarea
+    id: cout
+    attributes:
+      label: Ce que ça coûterait
+      description: |
+        Facultatif, mais précieux. Faut-il une dépendance, un modèle à embarquer,
+        un accès réseau ? Si vous n'en savez rien, laissez vide.

@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💡 Proposer une fonctionnalité
+    url: https://github.com/Simon256px/MontLivre/discussions/new?category=ideas
+    about: Les idées se discutent avant d'être des tickets. Chaque fonction doit justifier son poids.
+  - name: 🙏 Poser une question
+    url: https://github.com/Simon256px/MontLivre/discussions/new?category=q-a
+    about: Une installation, un réglage, un usage — la question va dans Q&A.
+  - name: 🗺️ Feuille de route
+    url: https://github.com/Simon256px/MontLivre/wiki/Feuille-de-route
+    about: Ce qui est fait, ce qui vient, ce qui est écarté — vérifiez avant de proposer.
+  - name: 📖 Wiki
+    url: https://github.com/Simon256px/MontLivre/wiki
+    about: FAQ, formats pris en charge, emplacement des données.

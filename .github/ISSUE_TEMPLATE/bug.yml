@@ -1,0 +1,79 @@
+name: 🐞 Signaler un bug
+description: Quelque chose ne fonctionne pas comme annoncé.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un bug, c'est un écart entre ce que fait MontLivre et ce qu'il devrait
+        faire. Pour une fonction qui manque, passez plutôt par
+        [Discussions → Ideas](https://github.com/Simon256px/MontLivre/discussions/categories/ideas).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de MontLivre
+      description: Visible dans Réglages, en bas de l'écran.
+      placeholder: "2.3.5"
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Version de Windows
+      placeholder: "Windows 11 24H2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: etapes
+    attributes:
+      label: Comment le reproduire
+      description: Les gestes exacts, dans l'ordre, en partant de l'ouverture de l'application.
+      placeholder: |
+        1. Ouvrir un EPUB depuis la bibliothèque
+        2. Sélectionner un passage
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: attendu
+    attributes:
+      label: Ce qui devait arriver
+    validations:
+      required: true
+
+  - type: textarea
+    id: obtenu
+    attributes:
+      label: Ce qui est arrivé
+      description: Une capture d'écran vaut souvent trois paragraphes — glissez-la ici.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Format du livre concerné
+      description: Laissez vide si le bug ne dépend pas du livre.
+      multiple: true
+      options:
+        - EPUB
+        - MOBI
+        - AZW3
+        - FB2
+        - CBZ
+        - PDF
+        - Sans rapport avec un livre
+
+  - type: checkboxes
+    id: verifications
+    attributes:
+      label: Avant d'envoyer
+      options:
+        - label: J'ai vérifié que je suis sur la dernière version publiée.
+          required: true
+        - label: J'ai cherché dans les issues existantes, ouvertes comme fermées.
+          required: true

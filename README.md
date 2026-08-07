@@ -5,7 +5,9 @@
 <p align="center">
   <a href="https://simon256px.github.io/MontLivre/">Site</a> ·
   <a href="../../releases/latest">Télécharger</a> ·
-  <a href="CHANGELOG.md">Journal</a>
+  <a href="CHANGELOG.md">Journal</a> ·
+  <a href="../../wiki/Feuille-de-route">Feuille de route</a> ·
+  <a href="../../wiki">Wiki</a>
 </p>
 
 MontLivre est un lecteur de livres numériques pour Windows. Il lit EPUB, MOBI,

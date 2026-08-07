@@ -1,0 +1,31 @@
+title: "[Question] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        La [FAQ du wiki](https://github.com/Simon256px/MontLivre/wiki/FAQ) répond
+        déjà aux questions les plus fréquentes : formats pris en charge, PDF,
+        emplacement des livres importés, mises à jour.
+
+        Si quelque chose est franchement cassé, ouvrez plutôt une
+        [issue](https://github.com/Simon256px/MontLivre/issues/new/choose).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de MontLivre
+      description: Visible dans Réglages. Laissez vide si la question ne porte pas sur l'application installée.
+      placeholder: "2.3.5"
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Votre question
+    validations:
+      required: true
+
+  - type: textarea
+    id: essais
+    attributes:
+      label: Ce que vous avez déjà essayé
+      description: Facultatif, mais ça évite qu'on vous propose ce que vous avez déjà fait.

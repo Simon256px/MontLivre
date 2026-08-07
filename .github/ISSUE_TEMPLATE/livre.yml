@@ -1,0 +1,59 @@
+name: 📕 Un livre s'ouvre mal
+description: Un fichier précis refuse de s'ouvrir, ou s'affiche de travers.
+labels: ["bug", "livre"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        La lecture est confiée à [foliate-js](https://github.com/johnfactotum/foliate-js).
+        Certains défauts viennent de là, d'autres du fichier lui-même — savoir
+        lequel demande de voir le livre en question.
+
+        **Les PDF sont rendus en pages fixes**, sans remise en page du texte :
+        c'est voulu, ce n'est pas un bug.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de MontLivre
+      placeholder: "2.3.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Format
+      options:
+        - EPUB
+        - MOBI
+        - AZW3
+        - FB2
+        - CBZ
+        - PDF
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptome
+    attributes:
+      label: Ce qu'on voit
+      description: L'import échoue ? La page reste blanche ? Le texte se chevauche ? Le sommaire est vide ?
+    validations:
+      required: true
+
+  - type: input
+    id: provenance
+    attributes:
+      label: D'où vient le fichier
+      description: Éditeur, librairie, conversion Calibre, domaine public… sans lien de téléchargement d'une œuvre sous droits.
+      placeholder: "Converti depuis un .docx avec Calibre 8.2"
+
+  - type: textarea
+    id: fichier
+    attributes:
+      label: Le fichier lui-même
+      description: |
+        S'il est librement redistribuable (domaine public, licence libre), joignez-le
+        ou donnez le lien : c'est ce qui permet de reproduire. Sinon, un livre du
+        même outil de conversion qui présente le même défaut fait très bien l'affaire.
