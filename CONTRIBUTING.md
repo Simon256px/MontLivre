@@ -179,3 +179,8 @@ Si le logo change, régénérez les icônes avec `tools/make-icons.ps1`.
 > mise à jour de toutes les installations existantes : signer avec une nouvelle
 > clé produirait des versions qu'elles refuseraient. Gardez-en une sauvegarde
 > hors de cette machine.
+
+## Soutenir le projet
+
+Pas le temps de contribuer ? Vous pouvez aussi soutenir MontLivre sur
+[ko-fi.com/simon256px](https://ko-fi.com/simon256px).
