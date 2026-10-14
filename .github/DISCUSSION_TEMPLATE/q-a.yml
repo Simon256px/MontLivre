@@ -3,7 +3,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        La [FAQ du wiki](https://github.com/Simon256px/MontLivre/wiki/FAQ) répond
+        La section [Bon à savoir](https://github.com/Simon256px/MontLivre#bon-à-savoir) du README répond
         déjà aux questions les plus fréquentes : formats pris en charge, PDF,
         emplacement des livres importés, mises à jour.
 

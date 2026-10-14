@@ -8,11 +8,11 @@ body:
         > **Hors ligne par défaut.** Aucun compte, aucun envoi. Ce qui exigerait
         > le réseau sera optionnel et signalé comme tel.
         >
-        > **La légèreté est une fonctionnalité.** L'installeur pèse 4,16 Mo. Ce
+        > **La légèreté est une fonctionnalité.** L'installeur pèse un peu plus de 4 Mo. Ce
         > qui pèse doit rapporter plus qu'il ne coûte.
 
-        Jetez d'abord un œil à la [feuille de route](https://github.com/Simon256px/MontLivre/wiki/Feuille-de-route) :
-        votre idée y est peut-être déjà, ou déjà écartée.
+        Jetez d'abord un œil à [la suite prévue](https://github.com/Simon256px/MontLivre#la-suite) :
+        votre idée y est peut-être déjà.
 
   - type: textarea
     id: manque
